@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0d1512"><title>Hishab · A little clarity, every day</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%230b7659'/%3E%3Ctext x='32' y='47' text-anchor='middle' fill='white' font-size='46'%3E৳%3C/text%3E%3C/svg%3E">
+  <link rel="manifest" href="/manifest.webmanifest"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><link rel="apple-touch-icon" href="/static/icon-192.png">
+  <link rel="stylesheet" href="/static/app.css"><link rel="stylesheet" href="/static/finance.css"><script src="/static/app.js" defer></script><script src="/static/extensions.js" defer></script><script src="/static/regulars.js" defer></script><script src="/static/finance.js" defer></script><script src="/static/navigation.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="#home"><span class="brand-mark">৳</span><span>hishab<span class="brand-dot">.</span></span></a>
+      <div class="workspace-label">WORKSPACE</div>
+      <nav id="navigation" aria-label="Main navigation"></nav>
+
+      <div class="sidebar-footer"><span class="status-dot"></span> Synced to your account <span class="lock-icon" data-icon="lock"></span></div>
+    </aside>
+    <div class="workspace">
+      <header class="topbar"><div class="breadcrumb">My workspace <span>/</span> <strong id="breadcrumb">Overview</strong></div><div class="topbar-actions"><span class="today" id="today"></span><button class="icon-button" id="theme-toggle" aria-label="Switch appearance" data-action="theme"><span data-icon="sun"></span></button><button class="avatar" data-action="settings" aria-label="Open profile settings">H</button></div></header>
+      <main id="main" tabindex="-1"><div class="initial-loading">Getting your finances ready…</div></main>
+      <button class="quick-fab" data-action="quick-actions" aria-label="Open quick actions">+</button>
+      <footer class="page-footer" hidden><span>A little clarity, every day.</span><span>Made for life in Bangladesh <span class="tiny-dot">●</span></span></footer>
+    </div>
+  </div>
+  <nav class="mobile-nav" id="mobile-navigation" aria-label="Mobile navigation"></nav>
+  <dialog id="entry-dialog" aria-labelledby="dialog-title"><div class="dialog-header"><div><h2 id="dialog-title">Add a transaction</h2></div><button class="icon-button" data-action="close-dialog" aria-label="Close dialog"><span data-icon="close"></span></button></div><div id="dialog-content"></div></dialog>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</body></html>

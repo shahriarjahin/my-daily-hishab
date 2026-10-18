@@ -1,0 +1,10 @@
+# Tested with Python 3.12. Keep production deployments on the verified versions.
+fastapi==0.146.0
+uvicorn[standard]==0.54.0
+jinja2==3.1.6
+python-multipart==0.0.32
+sqlmodel==0.0.48
+python-dotenv==1.2.4
+google-genai==1.75.0
+httpx==0.28.1
+cryptography==50.0.2
