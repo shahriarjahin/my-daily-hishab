@@ -71,7 +71,7 @@ public final class MainActivity extends Activity {
         if(request==11){String content=exportContent;exportContent=null;if(result==RESULT_OK&&data!=null&&content!=null){runtime.disk.execute(()->{try(java.io.OutputStream output=getContentResolver().openOutputStream(data.getData())){output.write(content.getBytes("UTF-8"));runOnUiThread(()->android.widget.Toast.makeText(this,"Export saved",android.widget.Toast.LENGTH_SHORT).show());}catch(Exception e){runOnUiThread(()->android.widget.Toast.makeText(this,"Export failed. Try again.",android.widget.Toast.LENGTH_LONG).show());}});}}
     }
     @Override protected void onResume(){super.onResume();if(runtime!=null)runtime.scheduleSync();}
-    void handleBack(){if(web!=null)web.evaluateJavascript("if(document.querySelector('dialog[open]'))document.querySelector('dialog[open]').close();else if(location.hash&&location.hash!=='#home')document.getElementById('app-back').click();else HishabDevice.postMessage('exit','exit','{}')",null);}
+    void handleBack(){if(web!=null)web.evaluateJavascript("if(document.querySelector('dialog[open]'))document.querySelector('dialog[open]').close();else if(location.hash&&location.hash!=='#home')goBack();else HishabDevice.postMessage('exit','exit','{}')",null);}
     @Override public void onBackPressed(){handleBack();}
     @Override protected void onDestroy(){if(runtime!=null)runtime.listener=null;if(web!=null){web.removeJavascriptInterface("HishabDevice");web.destroy();web=null;}super.onDestroy();}
 }

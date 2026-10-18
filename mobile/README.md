@@ -4,7 +4,7 @@ Android 8.0 or later; targets Android 16 (API 36). Package: `com.digitxbd.hishab
 
 ## Install and use
 
-1. Copy `mobile/dist/hishab-1.0.0-release.apk` to your phone and open it. Android may ask you to allow installation from your browser or file manager.
+1. Copy `mobile/dist/hishab-1.0.1-release.apk` to your phone and open it. Android may ask you to allow installation from your browser or file manager.
 2. Sign in to your existing Supabase account while connected. Your cloud workspace downloads automatically. No financial records or login credentials are preloaded in the APK.
 3. Record income, expenses, transfers, budgets, categories, savings, loans and regulars offline. Changes commit to the phone database before network requests.
 4. Sync runs after changes, on resume, roughly every minute while open, and periodically in Android's background scheduler when a network is available. Background timing depends on Android battery restrictions. Settings → Sync & device → Sync now is also available.

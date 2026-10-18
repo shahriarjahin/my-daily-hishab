@@ -31,3 +31,6 @@
 :root[data-theme=glass] .mobile-nav{border:1px solid #e5f3ff3d;border-radius:999px;bottom:14px;box-shadow:inset 0 1px 0 #ffffff40,0 10px 40px #0005}
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){:root[data-theme=glass]{--panel:#20374e;--side:#112438}:root[data-theme=glass] :is(.sidebar,.topbar,.mobile-nav){background:#112438}}
 @media(prefers-reduced-transparency:reduce){:root[data-theme=glass]{--panel:#20374e;--side:#112438}:root[data-theme=glass] :is(.panel,.sidebar,.topbar,.mobile-nav,dialog){backdrop-filter:none;-webkit-backdrop-filter:none;background-color:#20374e}}
+
+/* Compact shell: preferences live in Settings; primary navigation stays visible. */
+.topbar,.app-back,.dialog-back,.back-link{display:none!important}main{padding-top:28px}@media(max-width:720px){main{padding-top:20px}}

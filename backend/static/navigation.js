@@ -9,7 +9,7 @@ navigation=function(){const active=routeInfo[page]?.[1]||'home';const item=([id,
 function sectionNav(items){return `<nav class="section-nav" aria-label="Section navigation">${items.map(([id,label])=>`<a href="#${id}" ${page===id?'aria-current="page"':''}>${label}</a>`).join('')}</nav>`;}
 const planNav=()=>sectionNav([['budgets','Budget'],['goals','Savings & goals'],['regulars','Regulars']]);
 const walletNav=()=>sectionNav([['wallets','Wallets'],['loans','Loans']]);
-const settingsBack=()=>`<a class="back-link" href="#settings">← Settings</a>`;
+const settingsBack=()=>'';
 const linkCard=(href,label,description,i)=>`<a class="destination-card" href="#${href}"><span class="destination-icon">${icon(i)}</span><span><strong>${label}</strong>${description?`<small>${description}</small>`:''}</span>${icon('arrow')}</a>`;
 
 const budgetScreen=budgets;
@@ -18,7 +18,7 @@ function savingsScreen(){return heading('', '',false)+planNav()+goalsView();}
 function regularScreen(){return heading('', '',false)+planNav()+regularsView();}
 function loanScreen(){return heading('', '',false)+walletNav()+loansView();}
 hub=function(){return heading('', '',false)+advisorView();};
-function importScreen(){return '<a class="back-link" href="#history">← Transactions</a>'+heading('', '',false)+parserView();}
+function importScreen(){return heading('', '',false)+parserView();}
 function categoryScreen(){return settingsBack()+heading('', '',false)+categoriesView();}
 
 home=function(){const doc=new DOMParser().parseFromString(financeHome(),'text/html');const balance=doc.querySelector('.balance-card')?.outerHTML||'';const entry=doc.querySelector('.smart-card')?.outerHTML||'';const walletSection=doc.querySelector('.wallet-section');if(walletSection){const funded=state.wallets.filter(w=>w.balance!==0);const visible=(funded.length?funded:state.wallets).slice(0,3).map(w=>w.id);walletSection.querySelectorAll('.wallet-card').forEach(card=>{if(!visible.includes(Number(card.dataset.id)))card.remove();});walletSection.querySelectorAll('.add-wallet').forEach(el=>el.remove());walletSection.querySelector('.section-title').innerHTML='<h2>Wallets</h2><a class="text-button" href="#wallets">View all</a>';}return heading('', '',false)+`<div class="dashboard-grid"><div class="main-column">${balance}${entry}<section class="panel"><div class="section-title"><h2>Recent entries</h2><a href="#history" class="text-button">View all</a></div>${state.transactions.length?state.transactions.slice(0,5).map(t=>row(t)).join(''):empty('No entries yet','', 'add','Add entry')}</section></div><aside class="right-column">${walletSection?.outerHTML||''}<div class="overview-links">${linkCard('budgets','Monthly plan','','budgets')}${linkCard('hub','Ask AI','','spark')}</div></aside></div>`;};
