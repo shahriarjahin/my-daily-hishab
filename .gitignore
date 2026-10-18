@@ -33,6 +33,14 @@ docs/screenshots/
 reference-analysis/
 *.apk
 *.apks
+mobile/.tools/
+mobile/.gradle/
+mobile/android/.gradle/
+mobile/android/local.properties
+mobile/android/**/build/
+mobile/dist/
+mobile/release-keys/
+mobile/mobile-config.json
 
 # App repository only: retain research and legacy tools locally.
 ml/

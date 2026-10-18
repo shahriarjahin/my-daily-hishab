@@ -1,0 +1,58 @@
+name: Android release build
+on:
+  workflow_dispatch:
+  push:
+    tags: ['android-v*']
+permissions:
+  contents: read
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+      HISHAB_BACKEND_URL: ${{ vars.HISHAB_BACKEND_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Install Python build dependencies
+        run: pip install -r requirements.txt
+      - name: Validate the offline ledger
+        run: |
+          node --test mobile/test_ledger.cjs mobile/test_transport.cjs
+          python -m unittest mobile.test_compatibility -v
+      - name: Restore release signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          python - <<'PY'
+          import base64,os
+          from pathlib import Path
+          key=os.environ.get('KEYSTORE_BASE64','')
+          if not key:raise SystemExit('Configure Android signing secrets described in mobile/README.md.')
+          folder=Path('mobile/release-keys');folder.mkdir(parents=True,exist_ok=True)
+          (folder/'hishab-release.p12').write_bytes(base64.b64decode(key))
+          (folder/'signing.properties').write_text('keyAlias=hishab\nstorePassword='+os.environ['KEYSTORE_PASSWORD']+'\nkeyPassword='+os.environ['KEY_PASSWORD']+'\n')
+          PY
+      - name: Build signed APK and Android App Bundle
+        run: python mobile/build.py --ci
+      - name: Upload private build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: hishab-android-release
+          path: mobile/dist/*
+          retention-days: 30

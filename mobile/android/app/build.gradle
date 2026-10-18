@@ -1,0 +1,36 @@
+plugins { id 'com.android.application' }
+
+def signingFile = rootProject.file('../release-keys/signing.properties')
+def signing = new Properties()
+if (signingFile.exists()) signingFile.withInputStream { signing.load(it) }
+def appVersion = new groovy.json.JsonSlurper().parse(rootProject.file('../version.json'))
+
+android {
+    namespace 'com.digitxbd.hishab'
+    compileSdk 36
+    defaultConfig {
+        applicationId 'com.digitxbd.hishab'
+        minSdk 26
+        targetSdk 36
+        versionCode appVersion.code
+        versionName appVersion.name
+        testInstrumentationRunner 'com.digitxbd.hishab.DatabaseChecks'
+    }
+    signingConfigs {
+        release {
+            if (signingFile.exists()) {
+                storeFile rootProject.file('../release-keys/hishab-release.p12')
+                storePassword signing['storePassword']
+                keyAlias signing['keyAlias']
+                keyPassword signing['keyPassword']
+                storeType 'PKCS12'
+            }
+        }
+    }
+    buildTypes {
+        release { signingConfig signingConfigs.release; minifyEnabled false }
+    }
+    testBuildType 'release'
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+    sourceSets { main { assets.srcDirs = ['build/generated/hishabAssets'] } }
+}

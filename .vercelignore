@@ -18,6 +18,7 @@ backend/supabase_client.py
 ml
 experiments
 reference-analysis
+mobile
 docs/screenshots
 *.apk
 *.apks

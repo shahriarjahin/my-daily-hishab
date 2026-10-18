@@ -1,0 +1,85 @@
+/* Android offline ledger. Portable workspace schema matches backend/workspace.py. */
+(function(root,factory){const api=factory();if(typeof module==='object')module.exports=api;else root.DeviceLedger=api;})(typeof globalThis!=='undefined'?globalThis:this,()=>{
+ 'use strict';
+ const clone=x=>JSON.parse(JSON.stringify(x));
+ const fail=message=>{throw new Error(message);};
+ const requireValue=(ok,message)=>{if(!ok)fail(message);};
+ function cents(value,positive=true){requireValue(typeof value==='number'&&Number.isFinite(value)&&Math.abs(value)<=1e12,'Enter a valid amount.');const raw=String(Math.abs(value));requireValue(/^\d+(?:\.\d{1,2})?$/.test(raw),'Use at most two decimal places.');const [whole,fraction='']=raw.split('.');const n=(Number(whole)*100+Number(fraction.padEnd(2,'0')))*(value<0?-1:1);requireValue(!positive||n>0,'Amount must be positive.');return n;}
+ const money=(value,positive=true)=>cents(value,positive)/100;
+ function total(values){const n=values.reduce((s,v)=>s+cents(v,false),0);requireValue(Number.isSafeInteger(n),'The total exceeds the supported range.');return n/100;}
+ const text=(v,max)=>{requireValue(typeof v==='string'&&v.trim().length>0&&v.trim().length<=max,'Check the text fields.');return v.trim();};
+ const date=v=>{if(!v)return new Date().toISOString();const d=new Date(v);requireValue(Number.isFinite(d.getTime()),'Choose a valid date.');return d.toISOString();};
+ const due=v=>{if(!v)return null;requireValue(/^\d{4}-\d{2}-\d{2}$/.test(v)&&new Date(v).toISOString().slice(0,10)===v,'Choose a valid due date.');return v;};
+ const day=v=>{const parts=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Dhaka',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(v)).map(p=>[p.type,p.value]));return `${parts.year}-${parts.month}-${parts.day}`;};
+ const row=(list,id)=>{const found=list.find(r=>r.id===id);requireValue(found,'Record not found.');return found;};
+ const next=list=>Math.max(0,...list.map(r=>r.id))+1;
+ const add=(list,data)=>{const r={id:next(list),...data};list.push(r);return r;};
+ const remove=(list,id)=>{row(list,id);list.splice(list.findIndex(r=>r.id===id),1);};
+ const category=(w,name,allowArchived=false)=>{const c=w.category_details.find(c=>c.name===name&&(allowArchived||!c.archived));requireValue(c,'Choose an active category.');return c;};
+ function balance(w,id){const wallet=row(w.wallets,id);return total([wallet.opening_balance,...w.transactions.filter(t=>t.wallet_id===id).map(t=>t.type==='income'?t.amount:-t.amount),...w.movements.map(m=>m.amount*((m.to_wallet_id===id?1:0)-(m.from_wallet_id===id?1:0)))]);}
+ const available=(w,id)=>total([balance(w,id),...w.savings.filter(s=>s.wallet_id===id).map(s=>-s.amount)]);
+ const funds=(w,id,n)=>requireValue(n<=available(w,id),'This wallet has insufficient unreserved money.');
+ function normalize(raw){const w=clone(raw);requireValue(w.schema_version===1&&Array.isArray(w.wallets)&&w.wallets.length>0,'Unsupported workspace format.');for(const name of ['transactions','budgets','category_details','movements','goals','savings','loans','advisor_messages','regulars'])w[name]??=[];w.settings={name:'',theme:'dark',language:'en',review_before_saving:true,monthly_budget:0,planned_income:0,savings_target:0,needs_percent:50,wants_percent:30,savings_percent:20,...w.settings};return w;}
+ function state(raw,now=new Date()){
+  const w=normalize(raw),today=day(now),month=today.slice(0,7),dayOfMonth=Number(today.slice(8)),days=new Date(Date.UTC(Number(today.slice(0,4)),Number(today.slice(5,7)),0)).getUTCDate();
+  const entries=w.transactions.filter(t=>day(t.date).startsWith(month)),expenses=entries.filter(t=>t.type==='expense'),spent=total(expenses.map(t=>t.amount)),income=total(entries.filter(t=>t.type==='income').map(t=>t.amount));
+  const cap=w.settings.monthly_budget||total(w.budgets.map(b=>b.amount)),todaySpent=total(expenses.filter(t=>day(t.date)===today).map(t=>t.amount)),daysLeft=days-dayOfMonth+1,daily=Math.floor(cents(Math.max(0,total([cap,-spent,todaySpent])),false)/daysLeft)/100;
+  const saved=total(w.savings.filter(s=>day(s.date).startsWith(month)).map(s=>s.amount)),reserved=total(w.savings.map(s=>s.amount)),cash=total(w.wallets.map(a=>balance(w,a.id))),basis=w.settings.planned_income||income;
+  const owed=total(w.loans.filter(l=>l.direction==='borrowed').map(l=>total([l.amount,-l.repaid]))),receivable=total(w.loans.filter(l=>l.direction==='lent').map(l=>total([l.amount,-l.repaid])));
+  const groups=['needs','wants','savings'].map(name=>({name,percent:w.settings[name+'_percent'],target:Math.round(basis*w.settings[name+'_percent'])/100,spent:name==='savings'?saved:total(expenses.filter(t=>w.category_details.find(c=>c.name===t.category)?.bucket===name).map(t=>t.amount))}));
+  return {...clone(w),transactions:[...w.transactions].sort((a,b)=>new Date(b.date)-new Date(a.date)||b.id-a.id),wallets:w.wallets.map(a=>({...a,balance:balance(w,a.id)})),budgets:w.budgets.map(b=>({...b,spent:total(expenses.filter(t=>t.category===b.category).map(t=>t.amount))})),categories:w.category_details.filter(c=>!c.archived).map(c=>c.name),wallet_openings:w.wallets.filter(a=>a.opening_balance).map(a=>({id:a.id,name:a.name,amount:a.opening_balance,date:a.created_at})),planning:{month,budget:cap,spent,income,income_basis:basis,days_left:daysLeft,daily_limit:daily,today_spent:todaySpent,today_remaining:Math.max(0,total([daily,-todaySpent])),remaining:Math.max(0,total([cap,-spent])),forecast:Math.round(spent/dayOfMonth*days*100)/100,daily_average:Math.round(spent/dayOfMonth*100)/100,monthly_saved:saved,reserved,available:total([cash,-reserved]),safe_savings:cap>0?Math.max(0,total([cash,-reserved,-Math.max(0,total([cap,-spent])),-owed])):0,owed,receivable,net_position:total([cash,receivable,-owed]),groups,savings_rate:income>0?Math.round((income-spent)/income*1000)/10:null,budget_control:cap>0?Math.round(Math.max(0,100-spent/cap*100)*10)/10:null},configured:true,cloud_mode:true};
+ }
+ function transaction(w,b,old){
+  const result={description:text(b.description,240),amount:money(b.amount),category:text(b.category,60),type:b.type,wallet_id:b.wallet_id,date:date(b.date),quantity:b.quantity??null,unit:b.unit||''};
+  requireValue(['income','expense'].includes(result.type),'Choose income or expense.');row(w.wallets,result.wallet_id);category(w,result.category,old?.category===result.category);
+  requireValue(result.unit.length<=20,'Unit is too long.');if(result.quantity!=null)requireValue(typeof result.quantity==='number'&&result.quantity>0&&result.quantity<=1e6,'Check the quantity.');return result;
+ }
+ function goal(b){requireValue(/^#[0-9a-f]{6}$/i.test(b.color||'#93ddba'),'Choose a valid color.');return {name:text(b.name,100),target:money(b.target),due_date:due(b.due_date),color:b.color||'#93ddba'};}
+ function mutate(raw,path,method,b={}){
+  const w=normalize(raw);let result={saved:true};const match=path.match(/^\/(\w+)(?:\/(\d+))?(?:\/(repayments))?$/);let name=match?.[1],id=Number(match?.[2]);
+  if(path==='/transactions'&&method==='POST'){
+   requireValue(Array.isArray(b.transactions)&&b.transactions.length>0&&b.transactions.length<=100,'Add 1–100 entries.');const validated=b.transactions.map(t=>transaction(w,t));result={transactions:validated.map(t=>add(w.transactions,t))};
+  }else if(name==='transactions'&&id&&method==='PATCH'){const old=row(w.transactions,id);Object.assign(old,transaction(w,{...old,...b},old));result=old;
+  }else if(name==='transactions'&&id&&method==='DELETE')remove(w.transactions,id);
+  else if(name==='wallets'&&path!=='/wallets/balances'&&['POST','PATCH'].includes(method)){
+   const old=id?row(w.wallets,id):{};const data={name:text(b.name??old.name,40),opening_balance:money(b.opening_balance??old.opening_balance??0,false)};
+   requireValue(!w.wallets.some(a=>a.id!==id&&a.name.toLowerCase()===data.name.toLowerCase()),'A wallet with that name already exists.');const a=id?Object.assign(old,data):add(w.wallets,{...data,created_at:new Date().toISOString()});result={...a,balance:balance(w,a.id)};
+  }else if(path==='/wallets/balances'&&method==='POST'){
+   requireValue(Array.isArray(b.wallets)&&b.wallets.length>0&&b.wallets.length<=100,'Check the wallets.');const seen=new Set();
+   for(const item of b.wallets){const label=text(item.name,40),key=label.toLowerCase();requireValue(!seen.has(key),'Each wallet must appear once.');seen.add(key);money(item.balance,false);const old=w.wallets.find(a=>a.name.toLowerCase()===key);if(old){requireValue(item.expected_balance===balance(w,old.id),'A wallet changed since the preview. Extract again.');old.opening_balance=money(total([item.balance,-balance(w,old.id),old.opening_balance]),false);}else add(w.wallets,{name:label,opening_balance:item.balance,created_at:new Date().toISOString()});}
+  }else if(path==='/settings'&&method==='PATCH'){
+   requireValue(Object.keys(b).every(k=>['name','theme','language','review_before_saving'].includes(k)),'Unknown setting.');if('name'in b)requireValue(typeof b.name==='string'&&b.name.length<=60,'Check your name.');if('theme'in b)requireValue(['dark','light','glass','system'].includes(b.theme),'Choose a valid theme.');if('language'in b)requireValue(['en','bn'].includes(b.language),'Choose a valid language.');if('review_before_saving'in b)requireValue(typeof b.review_before_saving==='boolean','Check the review setting.');Object.assign(w.settings,b);result=clone(w.settings);
+  }else if(name==='budgets'&&method==='PUT'){
+   const c=category(w,b.category);requireValue(['needs','wants'].includes(c.bucket),'Choose an expense category.');const value=money(b.amount);const old=w.budgets.find(a=>a.category===b.category);result=old?Object.assign(old,{amount:value}):add(w.budgets,{category:b.category,amount:value});
+  }else if(name==='budgets'&&id&&method==='DELETE')remove(w.budgets,id);
+  else if(path==='/plan'&&method==='PUT'){
+   const data={monthly_budget:0,planned_income:0,savings_target:0,needs_percent:50,wants_percent:30,savings_percent:20,...b};for(const k of ['monthly_budget','planned_income','savings_target'])requireValue(money(data[k],false)>=0,'Use nonnegative plan amounts.');
+   requireValue(['needs_percent','wants_percent','savings_percent'].every(k=>Number.isInteger(data[k])&&data[k]>=0&&data[k]<=100)&&data.needs_percent+data.wants_percent+data.savings_percent===100,'The three percentages must total 100.');requireValue(!data.planned_income||total([data.monthly_budget,data.savings_target])<=data.planned_income,'Spending and savings exceed planned income.');
+   if(data.allocations!=null){const seen=new Set();requireValue(Array.isArray(data.allocations)&&data.allocations.length<=100,'Check allocations.');for(const a of data.allocations){requireValue(['needs','wants'].includes(category(w,a.category).bucket)&&!seen.has(a.category),'Choose each expense category once.');seen.add(a.category);money(a.amount);}requireValue(total(data.allocations.map(a=>a.amount))<=data.monthly_budget,'Category allocations exceed the spending budget.');w.budgets=[];for(const a of data.allocations)add(w.budgets,{category:a.category,amount:a.amount});}delete data.allocations;Object.assign(w.settings,data);
+  }else if(name==='categories'&&['POST','PUT'].includes(method)){
+   const data={name:text(b.name,60),kind:b.kind||'expense',bucket:b.bucket||'needs',color:b.color||'#93ddba',icon:b.icon||'other',archived:b.archived??false};requireValue(['expense','income','savings','both'].includes(data.kind)&&['needs','wants','savings','income'].includes(data.bucket)&&/^#[0-9a-f]{6}$/i.test(data.color)&&['food','transport','shopping','utilities','health','education','entertainment','rent','gifts','salary','travel','business','savings','other','wallet'].includes(data.icon)&&typeof data.archived==='boolean','Check category fields.');
+   if(data.kind==='income'||data.kind==='savings')data.bucket=data.kind;requireValue(data.kind!=='expense'||['needs','wants'].includes(data.bucket),'Expenses belong to needs or wants.');requireValue(!w.category_details.some(c=>c.id!==id&&c.name.toLowerCase()===data.name.toLowerCase()),'A category with that name exists.');
+   if(id){const c=row(w.category_details,id),old=c.name;for(const list of [w.transactions,w.budgets,w.savings,w.regulars])for(const r of list)if(r.category===old)r.category=data.name;Object.assign(c,data);}else add(w.category_details,data);
+  }else if(path==='/transfers'&&method==='POST'){
+   const n=money(b.amount);row(w.wallets,b.to_wallet_id);requireValue(b.from_wallet_id!==b.to_wallet_id,'Choose two different wallets.');funds(w,b.from_wallet_id,n);add(w.movements,{amount:n,description:text(b.description||'Wallet transfer',240),from_wallet_id:b.from_wallet_id,to_wallet_id:b.to_wallet_id,kind:'transfer',loan_id:null,date:date()});
+  }else if(name==='movements'&&id&&method==='DELETE'){
+   const m=row(w.movements,id);if(m.loan_id){const l=row(w.loans,m.loan_id);if(m.kind==='loan'){requireValue(!l.repaid&&!w.movements.some(a=>a.loan_id===l.id&&a.kind==='repayment'),'Remove repayments before removing the original loan.');remove(w.loans,l.id);}else l.repaid=total([l.repaid,-m.amount]);}remove(w.movements,id);
+  }else if(name==='goals'&&['POST','PUT'].includes(method)){const data=goal(b);if(id)Object.assign(row(w.goals,id),data);else add(w.goals,data);
+  }else if(name==='goals'&&id&&method==='DELETE'){remove(w.goals,id);for(const s of w.savings)if(s.goal_id===id)s.goal_id=null;
+  }else if(path==='/savings'&&method==='POST'){
+   const n=money(b.amount);funds(w,b.wallet_id,n);requireValue(category(w,b.category).bucket==='savings','Choose a savings category.');if(b.goal_id)row(w.goals,b.goal_id);requireValue((b.note||'').length<=240,'Note is too long.');add(w.savings,{amount:n,category:b.category,wallet_id:b.wallet_id,goal_id:b.goal_id||null,note:b.note||'',date:date()});
+  }else if(name==='savings'&&id&&method==='DELETE')remove(w.savings,id);
+  else if(path==='/loans'&&method==='POST'){
+   const n=money(b.amount);row(w.wallets,b.wallet_id);requireValue(['lent','borrowed'].includes(b.direction),'Check loan direction.');if(b.direction==='lent')funds(w,b.wallet_id,n);requireValue((b.note||'').length<=240,'Note is too long.');const l=add(w.loans,{party:text(b.party,100),direction:b.direction,amount:n,repaid:0,due_date:due(b.due_date),note:b.note||'',date:date()});add(w.movements,{description:(b.direction==='borrowed'?'Borrowed from ':'Lent to ')+l.party,amount:n,kind:'loan',loan_id:l.id,from_wallet_id:b.direction==='lent'?b.wallet_id:null,to_wallet_id:b.direction==='borrowed'?b.wallet_id:null,date:date()});
+  }else if(name==='loans'&&id&&match[3]==='repayments'&&method==='POST'){
+   const l=row(w.loans,id),n=money(b.amount);row(w.wallets,b.wallet_id);requireValue(n<=total([l.amount,-l.repaid]),'Repayment exceeds the remaining loan.');if(l.direction==='borrowed')funds(w,b.wallet_id,n);l.repaid=total([l.repaid,n]);add(w.movements,{description:'Loan repayment: '+l.party,amount:n,kind:'repayment',loan_id:l.id,from_wallet_id:l.direction==='borrowed'?b.wallet_id:null,to_wallet_id:l.direction==='lent'?b.wallet_id:null,date:date()});
+  }else if(name==='regulars'&&['POST','PUT'].includes(method)){
+   requireValue(['needs','wants'].includes(category(w,b.category).bucket),'Choose an expense category.');requireValue(!w.regulars.some(r=>r.id!==id&&r.category===b.category),'This category already has a tracker.');const data={name:text(b.name,100),category:b.category,daily_limit:money(b.daily_limit??0,false),unit:text(b.unit||'pcs',20)};requireValue(data.daily_limit>=0,'Use a nonnegative limit.');if(id)Object.assign(row(w.regulars,id),data);else add(w.regulars,data);
+  }else if(name==='regulars'&&id&&method==='DELETE')remove(w.regulars,id);
+  else if(path==='/advisor'&&method==='DELETE')w.advisor_messages=[];
+  else fail('This action needs the hosted Hishab service.');
+  requireValue(w.wallets.length<=100&&w.category_details.length<=100&&w.transactions.length<=50000&&w.movements.length<=50000&&w.savings.length<=50000&&w.loans.length<=1000&&w.goals.length<=200&&w.regulars.length<=100&&w.budgets.length<=100,'Workspace record limit reached.');
+  return {workspace:w,result:clone(result)};
+ }
+ return {normalize,state,mutate,balance,available,money,total};
+});

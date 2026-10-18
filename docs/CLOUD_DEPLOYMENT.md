@@ -61,7 +61,7 @@ keys to test live. Model identifiers remain editable because availability depend
 The manifest, touch icon and asset-only service worker support home-screen installation. In Safari,
 use Share → Add to Home Screen. Android browsers may offer Install app. Network access is required
 for login, financial records and AI. The service worker never caches account/API responses or exports.
-See `mobile/README.md` for native-client integration. An App Store/Play Store binary is a separate build.
+The Android APK now includes encrypted SQLite and offline bookkeeping, with Supabase sync when connected. See `mobile/README.md` for Android installation and signed release builds. The web/PWA remains cloud-only.
 
 ## Architecture limits
 

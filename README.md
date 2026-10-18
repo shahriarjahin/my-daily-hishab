@@ -41,7 +41,7 @@ See [deployment details](docs/CLOUD_DEPLOYMENT.md) and the [feature guide](docs/
 - `app.py`: Vercel entrypoint
 - `backend/`: API, cloud persistence, templates and frontend assets
 - `supabase/migrations/`: tables, account access policies and conflict-safe save function
-- `mobile/README.md`: native-client integration notes
+- `mobile/README.md`: Android APK, offline SQLite, cloud sync and release builds
 
 The app uses no persistent server database files and never caches financial API responses in the browser.
 
@@ -53,3 +53,7 @@ The app uses no persistent server database files and never caches financial API 
 ```
 
 Tests use disposable memory and mocked accounts/providers.
+
+## Android
+
+The native Android app stores records in encrypted SQLite and syncs with the same Supabase account. Manual bookkeeping works offline after the first online sign-in. AI features use your hosted backend. See [Android installation and releases](mobile/README.md).
