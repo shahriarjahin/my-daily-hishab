@@ -186,6 +186,26 @@ class FinanceTests(unittest.TestCase):
         self.assertEqual(second.status_code, 200, second.text)
         self.assertEqual(second.headers['X-Workspace-Revision'], '2')
 
+    def test_glass_theme_is_persisted_and_account_owned(self):
+        result = self.client.patch('/api/settings', headers=self.headers, json={'theme': 'glass'})
+        self.assertEqual(result.status_code, 200, result.text)
+        self.assertEqual(self.get_state()['settings']['theme'], 'glass')
+        self.assertEqual(self.get_state('account-b')['settings']['theme'], 'dark')
+        invalid = self.client.patch('/api/settings', headers=self.headers, json={'theme': 'invalid'})
+        self.assertEqual(invalid.status_code, 422)
+        self.assertEqual(self.get_state()['settings']['theme'], 'glass')
+
+    def test_language_preference_is_validated_persisted_and_account_owned(self):
+        result = self.client.patch('/api/settings', headers=self.headers, json={'language': 'bn'})
+        self.assertEqual(result.status_code, 200, result.text)
+        self.assertEqual(self.get_state()['settings']['language'], 'bn')
+        self.assertEqual(self.get_state('account-b')['settings']['language'], 'en')
+        invalid = self.client.patch('/api/settings', headers=self.headers, json={'language': 'xx'})
+        self.assertEqual(invalid.status_code, 422)
+        self.assertEqual(self.get_state()['settings']['language'], 'bn')
+        self.client.patch('/api/settings', headers=self.headers, json={'language': 'en'})
+        self.assertEqual(self.get_state()['settings']['language'], 'en')
+
     def test_correcting_movements_keeps_loan_totals_consistent(self):
         self.fund()
         self.post('/loans', {'party': 'Friend', 'direction': 'borrowed', 'amount': 500, 'wallet_id': 1})

@@ -134,7 +134,8 @@ class BudgetInput(Input):
 
 class SettingsInput(Input):
     name: str | None = Field(default=None, max_length=60)
-    theme: Literal["light", "dark", "system"] | None = None
+    theme: Literal["light", "dark", "system", "glass"] | None = None
+    language: Literal["en", "bn"] | None = None
     review_before_saving: bool | None = None
 
 

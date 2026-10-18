@@ -12,7 +12,7 @@ from sqlmodel import Session, select
 from . import ai, cloud
 from .api import Input, WalletInput, TransactionInput, canonical_category, money, total, now
 from .database import get_session
-from .models import Transaction, Wallet, Category
+from .models import Transaction, Wallet, Category, AppSetting
 from .workspace import export_workspace, import_workspace, validate_workspace
 
 router = APIRouter(prefix="/api")
@@ -120,7 +120,7 @@ def extract_entries(body: ExtractInput, session: Session = Depends(get_session))
         "wallets [{name:Cash,balance:1000},{name:Bank,balance:2500}], transactions []. "
         "Never mistake a balance statement for receiving or spending money. "
         "transactions items: {description:string,amount:number,category:string,type:income|expense,wallet_id:integer}. "
-        "Use English descriptions, expand 5k, hajar, lakh and Bangla numbers to BDT numbers. "
+        f"Use {'Bangla' if (session.get(AppSetting, 1) or AppSetting()).language == 'bn' else 'English'} descriptions. Expand 5k, hajar, lakh and Bangla numbers to BDT numbers. "
         "Never invent transactions, double-count totals or repeat a wallet. "
         "If an expense explicitly states quantity and unit, include quantity:number and unit:string. Never guess quantities. "
         "If there is no actual financial fact, return both arrays empty. "

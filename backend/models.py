@@ -47,6 +47,7 @@ class AppSetting(SQLModel, table=True):
     id: int = Field(default=1, primary_key=True)
     name: str = ""
     theme: str = "dark"
+    language: str = "en"
     review_before_saving: bool = True
     monthly_budget: float = 0
     planned_income: float = 0
