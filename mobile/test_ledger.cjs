@@ -45,6 +45,12 @@ test('loans and repayments affect cash, not income; correction ordering is prote
  assert.throws(()=>change(w,'/movements/1','DELETE'));
  w=change(w,'/movements/2','DELETE');w=change(w,'/movements/1','DELETE');assert.equal(w.loans.length,0);assert.equal(ledger.balance(w,1),0);
 });
+test('a past loan tracks only outstanding debt without adding cash',()=>{
+ let w=change(fresh(),'/wallets/1','PATCH',{opening_balance:1000});
+ w=change(w,'/loans','POST',{party:'Old loan',direction:'borrowed',amount:5000,affect_wallet:false,date:'2026-09-10T12:00:00+06:00'});
+ assert.equal(ledger.balance(w,1),1000);assert.equal(w.movements.length,0);assert.equal(ledger.state(w).planning.owed,5000);
+ w=change(w,'/loans/1/repayments','POST',{amount:200,wallet_id:1});assert.equal(ledger.balance(w,1),800);assert.equal(w.loans[0].repaid,200);
+});
 test('category rename propagates through entries and budgets',()=>{
  let w=change(fresh(),'/transactions','POST',{transactions:[entry(10,'expense')]});w=change(w,'/budgets','PUT',{category:'Food',amount:200});
  w=change(w,'/categories/1','PUT',{name:'Groceries',kind:'expense',bucket:'needs',color:'#aa33ff',icon:'food',archived:false});

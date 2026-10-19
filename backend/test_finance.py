@@ -27,6 +27,24 @@ class FinanceTests(unittest.TestCase):
         response = self.client.patch('/api/wallets/1', headers=self.headers, json={'opening_balance': amount})
         self.assertEqual(response.status_code, 200, response.text)
 
+    def test_existing_loan_records_debt_without_inventing_cash(self):
+        self.fund()
+        result = self.post('/loans', {'party': 'Past loan', 'direction': 'borrowed', 'amount': 5000,
+            'affect_wallet': False, 'date': '2026-09-10T12:00:00+06:00'})
+        self.assertEqual(result.status_code, 201, result.text)
+        state = self.get_state()
+        self.assertEqual(state['wallets'][0]['balance'], 1000)
+        self.assertEqual(state['planning']['owed'], 5000)
+        self.assertEqual(state['planning']['income'], 0)
+        self.assertEqual(state['movements'], [])
+        self.assertTrue(state['loans'][0]['date'].startswith('2026-09-10'))
+        validate_workspace(self.records['account-a']['data'])
+        loan = state['loans'][0]['id']
+        self.assertEqual(self.post(f'/loans/{loan}/repayments', {'amount': 200, 'wallet_id': 1}).status_code, 200)
+        self.assertEqual(self.get_state()['wallets'][0]['balance'], 800)
+        self.assertEqual(self.get_state()['planning']['owed'], 4800)
+        self.assertEqual(self.post('/loans', {'party': 'New', 'direction': 'borrowed', 'amount': 100}).status_code, 422)
+
     def test_transfers_preserve_totals_and_survive_cloud_hydration(self):
         self.fund()
         result = self.post('/transfers', {'from_wallet_id': 1, 'to_wallet_id': 2, 'amount': 300})

@@ -85,3 +85,5 @@ Vision protocols follow the official
 [Google image guide](https://ai.google.dev/gemini-api/docs/image-understanding),
 [OpenAI vision guide](https://developers.openai.com/api/docs/guides/images-vision), and
 [Anthropic vision guide](https://platform.claude.com/docs/en/build-with-claude/vision).
+
+Historical loan entry: POST /api/loans accepts affect_wallet=false, optional wallet_id=null and an original date to record outstanding debt without changing cash. New loans default to affect_wallet=true and require a wallet.

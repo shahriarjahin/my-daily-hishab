@@ -115,7 +115,8 @@ def reset_health():
 
 def post(url, headers, body, timeout):
     # No automatic redirects: a provider must not redirect a credential to another host.
-    with httpx.Client(timeout=timeout, follow_redirects=False, trust_env=False) as client:
+    limits = httpx.Timeout(timeout, connect=min(3, timeout), write=min(3, timeout), pool=min(2, timeout))
+    with httpx.Client(timeout=limits, follow_redirects=False, trust_env=False) as client:
         response = client.post(url, headers=headers, json=body)
     if not 200 <= response.status_code < 300:
         code = response.status_code
@@ -139,6 +140,8 @@ def call_provider(config, prompt, text, timeout):
                 response = client.models.generate_content(model=model, contents=contents,
                     config=types.GenerateContentConfig(system_instruction=prompt, response_mime_type="application/json"))
             return response.text
+        except (httpx.TimeoutException, httpx.NetworkError):
+            raise ProviderError("network_or_timeout") from None
         except Exception as exc:
             code = getattr(exc, "code", None)
             reason = "rate_or_credit_limit" if code == 429 else "credit_limit" if code == 402 else "credentials" if code in (401, 403) else "configuration" if code in (400, 404) else "unavailable"
@@ -179,7 +182,8 @@ def extract(prompt, text, validator):
     configs = [c for c in load_configs() if c["enabled"] and c["key"] and c["model"] and (c["id"] != "custom" or c["base_url"])]
     if not configs:
         raise ProviderError("Connect at least one AI provider in Settings.")
-    deadline = time.monotonic() + 65
+    # Leave room for authentication, cloud reads and the mobile client's 45s timeout.
+    deadline = time.monotonic() + 30
     for config in configs:
         if isinstance(text, dict) and config["id"] in ("cohere", "deepseek"):
             failures.append({"provider": config["name"], "reason": "image_not_supported"})
@@ -193,7 +197,7 @@ def extract(prompt, text, validator):
         if remaining < 2:
             break
         try:
-            raw = call_provider(config, prompt, text, min(20, remaining))
+            raw = call_provider(config, prompt, text, min(12, remaining))
             raw = (raw or "").strip()
             if raw.startswith("```"):
                 raw = raw.split("\n", 1)[-1].rsplit("```", 1)[0]
@@ -212,5 +216,6 @@ def extract(prompt, text, validator):
         with LOCK:
             HEALTH[(scope(), config["id"])] = {"reason": reason, "until": time.monotonic() + cooldown}
         failures.append({"provider": config["name"], "reason": reason})
-    names = ", ".join(f["provider"] + " (" + f["reason"].replace("_", " ") + ")" for f in failures)
-    raise ProviderError("No connected AI provider could complete this request. " + names + ". Add credit, connect another provider, or retry after cooldown.")
+    explanations = {"credit_limit": "out of credit", "rate_or_credit_limit": "quota or rate limit", "credentials": "key rejected", "configuration": "model or API configuration rejected", "network_or_timeout": "connection timed out", "invalid_response": "unusable AI output", "unavailable": "provider unavailable", "image_not_supported": "receipt images not supported"}
+    names = "; ".join(f["provider"] + ": " + explanations.get(f["reason"], f["reason"].replace("_", " ")) for f in failures)
+    raise ProviderError("AI import failed. " + (names or "Request time budget reached") + ". Your records were not changed. Check Settings → AI connections; quota/key errors need a working provider, not repeated retries.")

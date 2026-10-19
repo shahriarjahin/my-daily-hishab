@@ -1,7 +1,7 @@
 """Cloud workspace planning, categories, earmarks and non-income money movements."""
 import calendar
 import json
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Literal
 
@@ -317,25 +317,32 @@ class LoanInput(Input):
     party: str = Field(min_length=1, max_length=100)
     direction: Literal["borrowed", "lent"]
     amount: float
-    wallet_id: int = Field(gt=0, strict=True)
+    wallet_id: int | None = Field(default=None, gt=0, strict=True)
+    affect_wallet: bool = True
+    date: datetime = Field(default_factory=now)
     due_date: str | None = None
     note: str = Field(default="", max_length=240)
     _amount = field_validator("amount", mode="before")(money)
     _due = field_validator("due_date")(GoalInput.valid_date.__func__)
+    _date = field_validator("date")(local_date)
 
 
 @router.post("/loans", status_code=201)
 def add_loan(body: LoanInput, session: Session = Depends(get_session)):
-    ensure_wallet(session, body.wallet_id)
-    if body.direction == "lent":
+    if body.affect_wallet:
+        if body.wallet_id is None:
+            raise HTTPException(422, "Choose a wallet for a new loan.")
+        ensure_wallet(session, body.wallet_id)
+    if body.affect_wallet and body.direction == "lent":
         require_funds(session, body.wallet_id, body.amount)
-    loan = Loan(**body.model_dump(exclude={"wallet_id"}), date=now())
+    loan = Loan(**body.model_dump(exclude={"wallet_id", "affect_wallet"}))
     session.add(loan)
     session.flush()
-    session.add(Movement(description=("Borrowed from " if body.direction == "borrowed" else "Lent to ") + body.party,
-        amount=body.amount, kind="loan", loan_id=loan.id, date=now(),
-        from_wallet_id=body.wallet_id if body.direction == "lent" else None,
-        to_wallet_id=body.wallet_id if body.direction == "borrowed" else None))
+    if body.affect_wallet:
+        session.add(Movement(description=("Borrowed from " if body.direction == "borrowed" else "Lent to ") + body.party,
+            amount=body.amount, kind="loan", loan_id=loan.id, date=body.date,
+            from_wallet_id=body.wallet_id if body.direction == "lent" else None,
+            to_wallet_id=body.wallet_id if body.direction == "borrowed" else None))
     session.commit()
     return {"saved": True}
 

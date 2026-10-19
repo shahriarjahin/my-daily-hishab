@@ -91,6 +91,7 @@ function showBalanceReview(){
 
 extract=async function(text,button,mode='auto',walletId=null){
   if(busy)return;busy=true;
+  document.getElementById('quick-entry-error')?.remove();
   const form=button?.closest('form');
   const selected=walletId||Number(form?.querySelector('[name=wallet_id]')?.value)||state.wallets[0]?.id;
   const old=button?.innerHTML;if(button){button.disabled=true;button.innerHTML='<span class="loading-dot"></span>';}
@@ -104,7 +105,7 @@ extract=async function(text,button,mode='auto',walletId=null){
       if(state.settings.review_before_saving){showReview();document.querySelector('.review-intro').insertAdjacentHTML('beforeend',`<br><span class="positive">${esc(result.provider)}${result.fallback_used?' · backup provider used':''}</span>`);}
       else{await request('/transactions','POST',{transactions:reviewRows});dialog.close();await refresh();toast(`${reviewRows.length} entries saved using ${result.provider}.`);}
     }
-  }catch(error){const target=dialog.open&&document.getElementById('form-error');if(target)target.textContent=error.message;else toast(error.message);}
+  }catch(error){const target=dialog.open&&document.getElementById('form-error');if(target)target.textContent=error.message;else if(form?.id==='quick-entry'){const message=document.createElement('p');message.id='quick-entry-error';message.className='form-error';message.setAttribute('role','alert');message.textContent=error.message;form.after(message);}else toast(error.message);}
   finally{busy=false;if(button?.isConnected){button.disabled=false;button.innerHTML=old;}}
 };
 

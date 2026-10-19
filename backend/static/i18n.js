@@ -1,6 +1,8 @@
 'use strict';
 // Translate presentation only. Account names, entered text, values and API keys stay unchanged.
 const bnMessages={
+ 'Loan entry':'ঋণ এন্ট্রি','New loan — move money in a wallet':'নতুন ঋণ — ওয়ালেটে টাকা যোগ/বাদ হবে','Existing loan balance — no wallet change':'আগের ঋণের বকেয়া — ওয়ালেট বদলাবে না','Amount still owed / lent (৳)':'বকেয়া ঋণ / পাওনা (৳)','Loan date':'ঋণের তারিখ',
+ 'For a past loan already spent, choose Existing loan balance and enter only the outstanding amount. Future repayments update your wallet.':'আগের ঋণের টাকা খরচ হয়ে গেলে আগের ঋণের বকেয়া বেছে শুধু বাকি টাকার পরিমাণ লিখুন। পরের পরিশোধে ওয়ালেট বদলাবে।',
  'Liquid Glass':'লিকুইড গ্লাস',
  'Developed by':'নির্মাতা','Courtesy of':'সৌজন্যে','Back':'পিছনে','Overview':'এক নজরে','Transactions':'লেনদেন','Plan':'পরিকল্পনা','Insights':'পরিসংখ্যান','More':'আরও',
  'Budget':'বাজেট','Budgets':'বাজেট','Savings & goals':'সঞ্চয় ও লক্ষ্য','Regulars':'নিয়মিত খরচ','Wallets':'ওয়ালেট','Loans':'ঋণ',

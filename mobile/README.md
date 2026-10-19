@@ -4,7 +4,7 @@ Android 8.0 or later; targets Android 16 (API 36). Package: `com.digitxbd.hishab
 
 ## Install and use
 
-1. Copy `mobile/dist/hishab-1.0.1-release.apk` to your phone and open it. Android may ask you to allow installation from your browser or file manager.
+1. Copy `mobile/dist/hishab-1.0.2-release.apk` to your phone and open it. Android may ask you to allow installation from your browser or file manager.
 2. Sign in to your existing Supabase account while connected. Your cloud workspace downloads automatically. No financial records or login credentials are preloaded in the APK.
 3. Record income, expenses, transfers, budgets, categories, savings, loans and regulars offline. Changes commit to the phone database before network requests.
 4. Sync runs after changes, on resume, roughly every minute while open, and periodically in Android's background scheduler when a network is available. Background timing depends on Android battery restrictions. Settings → Sync & device → Sync now is also available.
@@ -66,3 +66,7 @@ Compatibility tests import a synthetic Android workspace into the Python databas
 The instrumented checks are in `android/app/src/androidTest`. Build `assembleReleaseAndroidTest`, install both APKs on an emulator, then run `adb shell am instrument -w com.digitxbd.hishab.test/com.digitxbd.hishab.DatabaseChecks`. These checks use isolated synthetic accounts and make no authenticated production requests.
 
 The API 36 target follows [Google Play's current target API requirement](https://developer.android.com/google/play/requirements/target-sdk). SDK compatibility uses [Android Gradle Plugin 8.10.1](https://developer.android.com/build/releases/agp-8-10-0-release-notes).
+
+## Existing debt
+
+Wallets → Loans → Record a loan → Existing loan balance — no wallet change. Enter only the amount still outstanding and the original loan date. This creates a debt/receivable without an initial wallet movement. Future repayments change the selected wallet normally. This does not require AI.

@@ -140,6 +140,21 @@ class FailoverTests(unittest.TestCase):
             self.assertEqual(call.call_count, 1)
             self.assertEqual(call.call_args.args[0]["id"], "openai")
 
+    def test_fallback_stops_at_shorter_budget_and_explains_timeout(self):
+        clock = [0]
+        configs = [dict(self.configs[0], id=str(n), name='Provider ' + str(n)) for n in range(5)]
+        limits = []
+        def timeout(config, prompt, text, seconds):
+            limits.append(seconds)
+            clock[0] += seconds
+            raise ai.ProviderError('network_or_timeout')
+        with patch('backend.ai.load_configs', return_value=configs), patch('backend.ai.time.monotonic', side_effect=lambda: clock[0]), patch('backend.ai.call_provider', side_effect=timeout):
+            with self.assertRaises(ai.ProviderError) as caught:
+                ai.extract('JSON', 'test', lambda data: data)
+        self.assertEqual(limits, [12, 12, 6])
+        self.assertIn('connection timed out', str(caught.exception))
+        self.assertIn('records were not changed', str(caught.exception))
+
     def test_invalid_output_fails_over_and_all_failure_hides_keys(self):
         with patch("backend.ai.load_configs", return_value=self.configs), patch("backend.ai.call_provider", side_effect=['bad json', '{"wallets":[],"transactions":[]}']):
             self.assertTrue(ai.extract("JSON", "tea 20", lambda data: data)["fallback_used"])
