@@ -11,16 +11,23 @@ api=async function(path,options={}){
   catch(error){if(error.status===409&&cloudState.signed_in){try{state=await originalApi('/state');}catch{}}if(error.status===401&&!path.startsWith('/auth/')){cloudState.signed_in=false;renderLogin();}throw error;}
 };
 
+let refreshGeneration=0;
 refresh=async function(){
-  cloudState=await originalApi('/cloud/status');
+  const generation=++refreshGeneration;
+  const nextCloud=await originalApi('/cloud/status');
+  if(generation!==refreshGeneration)return;
+  cloudState=nextCloud;
   if(!cloudState.signed_in){renderLogin();return;}
   if(cloudState.setup_required){renderSetup();return;}
-  const results=await Promise.all([api('/state'),api('/ai/providers')]);
-  state=results[0];providerState=results[1];
+  const nextState=await api('/state');
+  if(generation!==refreshGeneration)return;
+  state=nextState;
   document.querySelector('.app-shell').classList.remove('auth-screen');
   document.querySelector('.mobile-nav').classList.remove('auth-hidden');
   applyTheme();render();decorateCloud();
   if(location.hash==='#add')showAdd();
+  // AI metadata is optional; its outage must not hide a freshly saved ledger.
+  api('/ai/providers').then(providers=>{if(generation!==refreshGeneration||!cloudState.signed_in)return;providerState=providers;if(page==='connections'&&!busy&&!dialog.open)render();}).catch(()=>{});
 };
 
 function decorateCloud(){
