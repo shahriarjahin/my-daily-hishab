@@ -2,9 +2,8 @@
 
 Project repository: https://github.com/shahriarjahin/my-daily-hishab
 
-The app display name remains **Hishab**.
 
-[Open web app](https://hishab.smjahin.online/) · [Download Android APK](https://github.com/shahriarjahin/my-daily-hishab/releases/latest)
+[Download Android APK](https://github.com/shahriarjahin/my-daily-hishab/releases/latest)
 
 Android releases include a signed APK for installation and a SHA-256 checksum for verification. Android 8.0 or later is required. Signing keys and private configuration are excluded from this repository.
 
