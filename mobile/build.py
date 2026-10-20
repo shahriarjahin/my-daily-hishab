@@ -18,10 +18,11 @@ def prepare():
     from sqlmodel import Session,create_engine
     from backend.database import init_db
     from backend.workspace import export_workspace
-    engine=create_engine('sqlite://')
-    init_db(engine)
-    with Session(engine) as session:
-        empty=export_workspace(session)
+    subprocess.run([sys.executable,str(REPO/'scripts/build_frontend.py')],cwd=REPO,check=True)
+    npm=shutil.which('npm.cmd') or shutil.which('npm')
+    subprocess.run([npm,'run','cap:sync'],cwd=REPO/'frontend',check=True)
+    engine=create_engine('sqlite://');init_db(engine)
+    with Session(engine) as session:empty=export_workspace(session)
     engine.dispose()
     env=dotenv_values(REPO/'.env')
     supplied=json.loads((ROOT/'mobile-config.json').read_text()) if (ROOT/'mobile-config.json').exists() else {}
@@ -39,27 +40,10 @@ def prepare():
     except Exception:
         if not config['supabase_anon_key'].startswith('sb_publishable_'):
             raise SystemExit('Only a Supabase anon or publishable key may be bundled.')
-    assets=ROOT/'android/app/build/generated/hishabAssets'
-    (assets/'static').mkdir(parents=True,exist_ok=True)
-    (assets/'mobile').mkdir(exist_ok=True)
-    # Strict allowlist: no .env, Python sources, database, tokens or user backups.
-    names=['modern.js','modern.css','app.js','web-sync.js','extensions.js','regulars.js','finance.js','wallet-branding.js','i18n.js','back-navigation.js','navigation.js','app.css','finance.css','hishab-logo-v2.png','hishab-icon-v2-192.png','hishab-icon-v2-512.png','NotoSansBengali-400.ttf','NotoSansBengali-600.ttf','NotoSansBengali-OFL.txt']
-    for name in names:shutil.copyfile(REPO/'backend/static'/name,assets/'static'/name)
-    shutil.copytree(REPO/'backend/static/wallet-logos',assets/'static/wallet-logos',dirs_exist_ok=True)
-    # Browser-only service worker does not apply to the APK's encrypted device database.
-    ext=assets/'static/extensions.js'
-    ext.write_text(ext.read_text(encoding='utf-8').replace("if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});",''),encoding='utf-8')
-    html=(REPO/'backend/templates/app.html').read_text(encoding='utf-8')
-    html=html.replace('<script src="/static/app.js" defer>', '<script src="/mobile/ledger.js" defer></script><script src="/mobile/transport.js" defer></script><script src="/static/app.js" defer>')
-    html=html.replace('<script src="/static/navigation.js" defer>', '<script src="/mobile/device-ui.js" defer></script><script src="/static/navigation.js" defer>')
-    html=html.replace('<link rel="manifest" href="/manifest.webmanifest">','')
-    (assets/'index.html').write_text(html,encoding='utf-8')
-    for file in (ROOT/'web').glob('*.js'):shutil.copyfile(file,assets/'mobile'/file.name)
+    assets=ROOT/'android/app/build/generated/hishabConfig'
+    assets.mkdir(parents=True,exist_ok=True)
     (assets/'mobile-config.json').write_text(json.dumps(config),encoding='utf-8')
     (assets/'empty-workspace.json').write_text(json.dumps(empty),encoding='utf-8')
-    res=ROOT/'android/app/src/main/res/mipmap-xxxhdpi'
-    res.mkdir(parents=True,exist_ok=True)
-    shutil.copyfile(REPO/'backend/static/hishab-icon-v2-192.png',res/'ic_launcher.png')
     return assets
 
 def main():
@@ -68,7 +52,7 @@ def main():
     if args.prepare_only:return
     tools=ROOT/'.tools'
     java=Path(os.environ.get('JAVA_HOME',''))
-    if not (java/'bin/java.exe').exists() and os.name=='nt':java=next((tools/'jdk').glob('*'))
+    if not (java/'bin/java.exe').exists() and os.name=='nt':java=next((tools/'jdk21').glob('*'))
     sdk=Path(os.environ.get('ANDROID_HOME') or os.environ.get('ANDROID_SDK_ROOT') or tools/'sdk')
     env={**os.environ,'JAVA_HOME':str(java),'ANDROID_HOME':str(sdk),'GRADLE_USER_HOME':str(ROOT/'.gradle')}
     env['PATH']=str(java/'bin')+os.pathsep+env.get('PATH','')
@@ -82,7 +66,7 @@ def main():
         subprocess.run([keytool,'-genkeypair','-keystore',str(keys/'hishab-release.p12'),'-storetype','PKCS12','-alias','hishab','-keyalg','RSA','-keysize','3072','-validity','10000','-dname','CN=Shahriar Morshed Jahin, OU=DigitXBD, O=DigitXBD, C=BD','-storepass:env','HISHAB_KEY_PASSWORD','-keypass:env','HISHAB_KEY_PASSWORD'],env=env,check=True)
         (keys/'signing.properties').write_text('storePassword='+password+'\nkeyPassword='+password+'\nkeyAlias=hishab\n')
         print('Created a private release key. Back up mobile/release-keys securely; updates need this same key.',flush=True)
-    gradle=next((tools/'gradle').glob('gradle-*/bin/gradle.bat')) if os.name=='nt' else Path(shutil.which('gradle') or '')
+    gradle=next((tools/'gradle814').glob('gradle-*/bin/gradle.bat')) if os.name=='nt' else Path(shutil.which('gradle') or '')
     subprocess.run([str(gradle),'--no-daemon','assembleRelease','bundleRelease'],cwd=ROOT/'android',env=env,check=True)
     dist=ROOT/'dist';dist.mkdir(exist_ok=True)
     version=json.loads((ROOT/'version.json').read_text())['name']

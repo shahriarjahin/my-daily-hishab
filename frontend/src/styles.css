@@ -1,0 +1,288 @@
+@import "../../backend/static/app.css";
+@import "../../backend/static/finance.css";
+@import "../../backend/static/modern.css";
+.money-sheet .primary-button {
+  background: var(--selected);
+  color: var(--selected-ink);
+  border-color: var(--selected);
+}
+.auth-main {
+  max-width: 1150px;
+  margin: auto;
+}
+.auth-logo {
+  width: 80px;
+  border-radius: 20px;
+}
+.auth-main .primary-button {
+  margin-top: 20px;
+}
+.auth-main .modern-segment button {
+  font-size: 13px;
+}
+.auth-main .auth-card {
+  max-width: 450px;
+  width: 100%;
+}
+.react-modal-content {
+  padding: 0 22px 22px;
+}
+.money-sheet .react-modal-content {
+  padding: 0;
+}
+.money-sheet .dialog-header {
+  position: absolute;
+  right: 12px;
+  top: 24px;
+  z-index: 1;
+}
+.money-sheet .dialog-header h2 {
+  display: none;
+}
+.money-sheet .entry-types {
+  margin-right: 28px;
+}
+.profile-link {
+  color: var(--text);
+  cursor: pointer;
+}
+.modern-shortcuts > button {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 17px 15px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--text);
+  border-radius: 16px;
+  font-size: 12px;
+  text-align: left;
+}
+.modern-shortcuts > button svg {
+  width: 18px;
+  color: var(--accent);
+}
+button.destination-card {
+  width: 100%;
+  text-align: left;
+  background: var(--panel);
+  color: var(--text);
+}
+.destination-card strong {
+  flex: 1;
+}
+.section-gap {
+  margin-top: 24px;
+}
+.record-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 20px;
+}
+.wallet-logo {
+  width: 35px;
+  height: 35px;
+  object-fit: contain;
+  border-radius: 8px;
+}
+.list-card {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  justify-content: space-between;
+  margin: 14px 0;
+}
+.list-card > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.list-card .muted {
+  font-size: 12px;
+}
+.section-nav {
+  display: flex;
+  flex-wrap: wrap;
+}
+.stat-grid > div strong {
+  display: block;
+  font-size: 23px;
+  margin-top: 6px;
+}
+.stat-grid > div {
+  font-size: 12px;
+}
+.modern-advice {
+  width: 100%;
+  text-align: left;
+  border: 0;
+}
+.settings-row select {
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  color: var(--text);
+  border-radius: 12px;
+  padding: 8px;
+}
+.quantity-details {
+  margin: 8px 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+.quantity-details summary {
+  cursor: pointer;
+}
+.quantity-details input {
+  width: 100%;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
+}
+.form-grid > .form-field input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+}
+.money-sheet .entry-details input {
+  width: auto;
+}
+.toast {
+  display: block;
+  position: fixed;
+  bottom: 105px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 13px 20px;
+  border-radius: 14px;
+  max-width: 90vw;
+  background: var(--text);
+  color: var(--bg);
+  z-index: 100;
+  opacity: 1;
+  pointer-events: none;
+}
+.form-error {
+  white-space: pre-wrap;
+}
+.advisor-messages p {
+  white-space: pre-wrap;
+}
+.modal-dialog .form-grid {
+  gap: 16px;
+}
+.sidebar nav {
+  margin-top: 35px;
+}
+.record-grid .section-title {
+  gap: 12px;
+}
+.initial-loading {
+  padding: 70px;
+}
+.mobile-nav {
+  display: none;
+}
+.form-actions {
+  flex-wrap: wrap;
+}
+.signin-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin: 4px 0 28px;
+  color: var(--text);
+  font-size: 28px;
+  font-weight: 650;
+  letter-spacing: -0.8px;
+}
+.signin-brand img {
+  display: block;
+  width: 88px;
+  height: 88px;
+  object-fit: contain;
+  border-radius: 24px;
+}
+input,
+select,
+textarea {
+  max-width: 100%;
+}
+.sidebar-footer {
+  position: static;
+  margin-top: 40px;
+}
+.nav-item {
+  cursor: pointer;
+}
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+@media (max-width: 720px) {
+  .record-grid {
+    grid-template-columns: 1fr;
+    gap: 13px;
+  }
+  .auth-main {
+    padding-bottom: 25px;
+  }
+  .auth-layout {
+    display: block;
+  }
+  .auth-intro {
+    margin-bottom: 25px;
+  }
+  .auth-logo {
+    width: 50px;
+  }
+  .auth-intro h1 {
+    font-size: 35px;
+  }
+  .react-modal-content {
+    padding: 0 16px 20px;
+  }
+  .money-sheet {
+    max-height: 95dvh;
+  }
+  .money-sheet .quantity-details {
+    font-size: 10px;
+    margin-top: 6px;
+  }
+  .money-sheet .pad-keys button {
+    height: 41px;
+  }
+  .money-sheet .pad-value {
+    margin-top: 12px;
+    margin-bottom: 13px;
+  }
+  .money-sheet .entry-details label {
+    min-height: 40px;
+  }
+  .list-card {
+    gap: 10px;
+  }
+  .list-card .secondary-button {
+    font-size: 11px;
+    padding: 8px 12px;
+  }
+  .toast {
+    font-size: 12px;
+  }
+  .money-sheet .dialog-header .icon-button {
+    width: 25px;
+    height: 25px;
+  }
+  .money-sheet .dialog-header svg {
+    width: 14px;
+  }
+  .money-sheet .pad-save {
+    margin-top: 10px;
+  }
+  main {
+    padding-top: max(26px, env(safe-area-inset-top));
+    padding-bottom: calc(105px + env(safe-area-inset-bottom));
+  }
+}

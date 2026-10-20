@@ -4,7 +4,7 @@ Android 8.0 or later; targets Android 16 (API 36). Package: `com.digitxbd.hishab
 
 ## Install and use
 
-1. Copy `mobile/dist/hishab-1.1.0-release.apk` to your phone and open it. Android may ask you to allow installation from your browser or file manager.
+1. Copy `mobile/dist/hishab-2.0.0-release.apk` to your phone and open it. Android may ask you to allow installation from your browser or file manager.
 2. Sign in to your existing Supabase account while connected. Your cloud workspace downloads automatically. No financial records or login credentials are preloaded in the APK.
 3. Record income, expenses, transfers, budgets, categories, savings, loans and regulars offline. Changes commit to the phone database before network requests.
 4. Sync runs after changes, on resume, roughly every minute while open, and periodically in Android's background scheduler when a network is available. Background timing depends on Android battery restrictions. Settings → Sync & device → Sync now is also available.
@@ -20,7 +20,7 @@ Only APK-owned assets run in the WebView. Cleartext HTTP, remote pages inside th
 
 ## Rebuild
 
-This computer has official Google Android SDK tools, Microsoft OpenJDK 17 and Gradle 8.11.1 under ignored `mobile/.tools`. The owner authorized accepting the SDK license.
+This computer has official Google Android SDK tools, Microsoft OpenJDK 21 and Gradle 8.14.3 under ignored `mobile/.tools`. The owner authorized accepting the SDK license.
 
 ```powershell
 .\.venv\Scripts\python.exe mobile/build.py
@@ -83,3 +83,8 @@ The direct GitHub build declares REQUEST_INSTALL_PACKAGES. Before submitting a G
 ## Reference interface
 
 The shared UI uses cream/white and near-black/charcoal themes with amber accents. Home cash flow, grouped Activity, category budgets, Insights and the keypad entry sheet use actual workspace records. The app does not invent health scores, market investments, notifications or sample merchant brands. Existing AI, transfers, category management, savings, loans, backups and conflict tools remain accessible.
+
+
+## React + Capacitor 2.0
+
+The interface is React + TypeScript. Run `npm ci --prefix frontend` before building. `python mobile/build.py` compiles the shared UI, runs Capacitor sync and signs the APK. The existing database, Android Keystore alias, session preferences, package ID and signing key are retained. The custom `HishabPlugin.java` delegates to the tested native runtime. An in-place 1.1.0 → 2.0.0 emulator upgrade passed 22 checks, including reading encrypted records from the prior installation and loading React through the native plugin. See `frontend/README.md` and `docs/REACT_MIGRATION.md`.

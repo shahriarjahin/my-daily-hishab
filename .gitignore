@@ -62,3 +62,16 @@ ml/results/relabel/batches/
 ml/results/relabel/train_batches/
 ml/results/relabel/gemini_train_*.jsonl
 ml/results/gguf_diag_preds/
+
+# Private working-app snapshots
+/backups/
+/node_modules/
+/frontend/node_modules/
+/frontend/dist/
+/frontend/.vite/
+
+/frontend/public/static/
+/mobile/android/app/src/main/assets/
+/mobile/android/capacitor-cordova-android-plugins/
+/mobile/android/capacitor.settings.gradle
+/mobile/android/app/capacitor.build.gradle

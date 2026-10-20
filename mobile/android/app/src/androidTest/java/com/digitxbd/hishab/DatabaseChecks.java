@@ -9,9 +9,9 @@ import org.json.JSONObject;
 
 /** Device tests use synthetic isolated accounts and never make cloud requests. */
 public final class DatabaseChecks extends Instrumentation {
-    int checks=0;
+    int checks=0;boolean expectUpgrade=false;
     void check(boolean condition,String message){if(!condition)throw new AssertionError(message);checks++;}
-    @Override public void onCreate(Bundle arguments){super.onCreate(arguments);start();}
+    @Override public void onCreate(Bundle arguments){super.onCreate(arguments);expectUpgrade="true".equals(arguments.getString("upgrade"));start();}
     @Override public void onStart(){Bundle report=new Bundle();Store store=null;
         try{
             check(AppUpdater.compareVersions("1.1.0","1.0.2")>0,"New minor update detected");
@@ -24,6 +24,7 @@ public final class DatabaseChecks extends Instrumentation {
             check(!(Boolean)trust.invoke(null,new java.net.URL("https://user:password@github.com/update.apk")),"Credential-bearing update URL blocked");
             store=new Store(getTargetContext());
             String a="instrumentation-account-a",b="instrumentation-account-b";
+            if(expectUpgrade)check(store.load(a).getJSONObject("workspace").getString("label").equals("device choice"),"Legacy encrypted workspace survives Capacitor upgrade");
             store.getWritableDatabase().delete("workspace","user_id IN (?,?)",new String[]{a,b});
             store.getWritableDatabase().delete("recovery","user_id IN (?,?)",new String[]{a,b});
             JSONObject one=new JSONObject().put("label","PRIVATE-SYNTHETIC-LEDGER");
@@ -57,11 +58,12 @@ public final class DatabaseChecks extends Instrumentation {
             for(int retry=0;retry<100&&!loginReady;retry++){
                 java.util.concurrent.CountDownLatch latch=new java.util.concurrent.CountDownLatch(1);
                 java.util.concurrent.atomic.AtomicReference<String> result=new java.util.concurrent.atomic.AtomicReference<>();
-                runOnMainSync(()->activity.web.evaluateJavascript("Boolean(document.querySelector('#auth-form')&&document.querySelectorAll('[data-action=auth-mode]').length===2)",value->{result.set(value);latch.countDown();}));
+                runOnMainSync(()->activity.getBridge().getWebView().evaluateJavascript("Boolean(document.querySelector('#auth-form')&&window.Capacitor&&window.Capacitor.isNativePlatform())",value->{result.set(value);latch.countDown();}));
                 latch.await(2,java.util.concurrent.TimeUnit.SECONDS);loginReady="true".equals(result.get());
                 if(!loginReady)Thread.sleep(200);
             }
-            check(loginReady,"Packaged UI, native transport and sign-in controls must load");
+            check(loginReady,"React UI, Capacitor transport and sign-in controls must load");
+            check(activity.getBridge().getPlugin("Hishab")!=null,"Typed Capacitor plugin registered");
             report.putString("stream","PASS: "+checks+" native database checks\n");finish(RESULT_OK,report);
         }catch(Throwable error){report.putString("stream","FAIL: "+error.toString()+"\n");finish(RESULT_CANCELED,report);}
         finally{if(store!=null)store.close();}

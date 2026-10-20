@@ -17,7 +17,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -26,9 +26,13 @@ jobs:
           node-version: '22'
       - uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.11.1'
+          gradle-version: '8.14.3'
       - name: Install Python build dependencies
         run: pip install -r requirements.txt
+      - name: Install React and Capacitor dependencies
+        run: npm ci --prefix frontend
+      - name: Validate React transport
+        run: npm test --prefix frontend
       - name: Validate the offline ledger
         run: |
           node --test mobile/test_ledger.cjs mobile/test_transport.cjs

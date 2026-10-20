@@ -27,6 +27,9 @@ app.include_router(integration_router)
 app.include_router(finance_router)
 app.mount("/static", StaticFiles(directory=str(_HERE / "static")), name="static")
 templates = Jinja2Templates(directory=str(_HERE / "templates"))
+react_directory = _HERE / "static" / "react"
+# The committed production bundle keeps Vercel's Python build independent of Node.
+app.mount("/assets", StaticFiles(directory=str(react_directory / "assets"), check_dir=False), name="react-assets")
 
 
 @app.middleware("http")
@@ -67,9 +70,11 @@ def service_worker():
     return FileResponse(_HERE / "static" / "sw.js", media_type="application/javascript", headers={"Service-Worker-Allowed": "/", "Cache-Control": "no-cache"})
 @app.get("/", response_class=HTMLResponse)
 def dashboard(request: Request):
-    return templates.TemplateResponse(request=request, name="app.html", context={})
+    if (react_directory / "index.html").is_file():
+        return FileResponse(react_directory / "index.html", media_type="text/html", headers={"Cache-Control": "no-cache"})
+    return HTMLResponse("Build the React interface with: python scripts/build_frontend.py", status_code=503)
 
 
 @app.get("/analyze", response_class=HTMLResponse)
 def analyze_page(request: Request):
-    return templates.TemplateResponse(request=request, name="app.html", context={})
+    return dashboard(request)

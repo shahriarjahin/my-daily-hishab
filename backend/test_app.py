@@ -12,11 +12,12 @@ class ShellTests(unittest.TestCase):
         for path in ["/", "/analyze"]:
             response = self.client.get(path)
             self.assertEqual(response.status_code, 200)
-            self.assertIn("/static/app.js", response.text)
-            self.assertIn("/static/app.css", response.text)
-            self.assertIn('id="entry-dialog"', response.text)
-        for asset in ["/static/app.js", "/static/app.css"]:
-            self.assertEqual(self.client.get(asset).status_code, 200)
+            self.assertIn('id="root"', response.text)
+            self.assertIn('type="module"', response.text)
+            self.assertNotIn('/static/app.js', response.text)
+            import re
+            for asset in re.findall(r'(?:src|href)="(\./assets/[^\"]+)"', response.text):
+                self.assertEqual(self.client.get('/'+asset[2:]).status_code, 200)
 
 
 if __name__ == "__main__":

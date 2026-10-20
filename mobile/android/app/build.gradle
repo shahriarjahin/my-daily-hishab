@@ -31,6 +31,12 @@ android {
         release { signingConfig signingConfigs.release; minifyEnabled false }
     }
     testBuildType 'release'
-    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
-    sourceSets { main { assets.srcDirs = ['build/generated/hishabAssets'] } }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_21; targetCompatibility JavaVersion.VERSION_21 }
+    sourceSets { main { assets.srcDirs = ['src/main/assets','build/generated/hishabConfig'] } }
+}
+
+dependencies {
+    implementation project(':capacitor-android')
+    implementation 'androidx.appcompat:appcompat:1.7.1'
+    implementation 'androidx.activity:activity:1.11.0'
 }

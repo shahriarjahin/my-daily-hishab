@@ -1,6 +1,6 @@
 # Upload Hishab to Google Play
 
-Upload the **Android App Bundle (.aab)**, not the installable APK. Current direct-distribution build: `mobile/dist/hishab-1.1.0-release.aab`; package `com.digitxbd.hishab`; version name `1.1.0`, version code `4`; minimum Android 8; target Android 16/API 36.
+Upload the **Android App Bundle (.aab)**, not the installable APK. Current direct-distribution build: `mobile/dist/hishab-2.0.0-release.aab`; package `com.digitxbd.hishab`; version name `2.0.0`, version code `5`; minimum Android 8; target Android 16/API 36.
 
 ## 1. Open your developer account
 

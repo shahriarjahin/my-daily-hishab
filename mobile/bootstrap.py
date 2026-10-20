@@ -8,9 +8,9 @@ import zipfile
 ROOT = Path(__file__).resolve().parent
 TOOLS = ROOT / '.tools'
 PACKAGES = {
-    'jdk': ('https://aka.ms/download-jdk/microsoft-jdk-17-windows-x64.zip', None),
+    'jdk21': ('https://aka.ms/download-jdk/microsoft-jdk-21-windows-x64.zip', None),
     'commandline': ('https://dl.google.com/android/repository/commandlinetools-win-15859902_latest.zip', '90ae805d20434428bffcb699c290860f19bb5f66a67e6b330067e3de801fb04a'),
-    'gradle': ('https://services.gradle.org/distributions/gradle-8.11.1-bin.zip', None),
+    'gradle814': ('https://services.gradle.org/distributions/gradle-8.14.3-bin.zip', None),
 }
 
 def install(item):
@@ -24,7 +24,7 @@ def install(item):
         urllib.request.urlretrieve(url, archive)
     if checksum and hashlib.sha256(archive.read_bytes()).hexdigest() != checksum:
         raise RuntimeError(name + ' checksum mismatch')
-    if name == 'gradle':
+    if name.startswith('gradle'):
         expected = urllib.request.urlopen(url + '.sha256').read().decode().strip().split()[0]
         if hashlib.sha256(archive.read_bytes()).hexdigest() != expected:
             raise RuntimeError('Gradle checksum mismatch')

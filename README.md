@@ -9,6 +9,8 @@ Android releases include a signed APK for installation and a SHA-256 checksum fo
 
 Cloud personal-finance app for Bangladeshi taka, with English, বাংলা and Banglish AI entry.
 
+The interface uses **React + TypeScript**, with **Capacitor** for Android and the existing Python API for cloud operations. See [frontend/README.md](frontend/README.md) and [migration notes](docs/REACT_MIGRATION.md).
+
 ## Features
 
 - Supabase email/password login and private, account-owned cloud data
@@ -27,6 +29,8 @@ Copy `.env.example` to `.env`, fill in the required values, and run
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
+npm ci --prefix frontend
+.\.venv\Scripts\python.exe scripts/build_frontend.py
 .\.venv\Scripts\python.exe -m uvicorn backend.main:app --host 127.0.0.1 --port 8001
 ```
 
