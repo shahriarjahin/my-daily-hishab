@@ -1,6 +1,6 @@
 # Upload Hishab to Google Play
 
-Upload the **Android App Bundle (.aab)**, not the installable APK. Current build: `mobile/dist/hishab-1.0.1-release.aab`; package `com.digitxbd.hishab`; version name `1.0.1`, version code `2`; minimum Android 8; target Android 16/API 36.
+Upload the **Android App Bundle (.aab)**, not the installable APK. Current direct-distribution build: `mobile/dist/hishab-1.1.0-release.aab`; package `com.digitxbd.hishab`; version name `1.1.0`, version code `4`; minimum Android 8; target Android 16/API 36.
 
 ## 1. Open your developer account
 
@@ -46,3 +46,6 @@ After testing requirements and dashboard checks are complete, create a Productio
 Increase both values in `mobile/version.json`, build again with `python mobile/build.py`, and upload the new AAB. Preserve `com.digitxbd.hishab`, the signing identity and your Play Console account. Never reuse a version code already uploaded. The repository includes a manual/tag-triggered Android build workflow; configure the signing secrets and public deployment variables as described in `mobile/README.md` before using it.
 
 Official starting point: [Create and set up your app](https://support.google.com/googleplay/android-developer/answer/9859152). The API 36 target follows [Google Play's current target API requirement](https://developer.android.com/google/play/requirements/target-sdk).
+
+
+The 1.1.0 GitHub build has a direct APK updater and REQUEST_INSTALL_PACKAGES permission. Prepare a separate Play build without that updater/permission before Play submission; do not submit the GitHub build unchanged.

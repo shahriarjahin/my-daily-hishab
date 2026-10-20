@@ -48,3 +48,12 @@ document.addEventListener('submit',async event=>{if(event.target.id!=='device-se
 const deviceToast=toast;
 toast=function(message){deviceToast(['Saved to your cloud account.','Updated in your cloud account.'].includes(message)?deviceText('Saved on device','ফোনে সংরক্ষিত'):message);};
 AndroidTransport.call('status').then(value=>{deviceStatus=value;deviceDecorate();}).catch(()=>{});
+
+// GitHub metadata requests are public; no login token is used by the updater.
+let appUpdatePreferences={automatic:true,version:''};
+function updateCard(){if(page!=='settings'||!cloudState.signed_in||document.getElementById('app-updates'))return;const card=document.createElement('section');card.id='app-updates';card.className='panel finance-section';card.innerHTML=`<div class="section-heading"><h2>${deviceText('App updates','অ্যাপ আপডেট')}</h2><span class="pill">${esc(appUpdatePreferences.version)}</span></div><div class="settings-row"><span>${deviceText('Check automatically','স্বয়ংক্রিয়ভাবে খুঁজুন')}</span><label class="switch"><input id="automatic-updates" type="checkbox" aria-label="Check automatically" ${appUpdatePreferences.automatic?'checked':''}><span></span></label></div><button type="button" class="secondary-button" id="check-app-update">${deviceText('Check for updates','আপডেট খুঁজুন')}</button><p class="form-hint">${deviceText('Downloads from GitHub. Android confirms installation.','GitHub থেকে ডাউনলোড। ইনস্টল করতে Android অনুমতি চাইবে।')}</p>`;main.append(card);}
+const updateDeviceDecorate=deviceDecorate;
+deviceDecorate=function(){updateDeviceDecorate();updateCard();};
+document.addEventListener('click',e=>{if(e.target.closest('#check-app-update')){toast(deviceText('Checking GitHub…','GitHub খোঁজা হচ্ছে…'));AndroidTransport.call('updates',{check:true}).catch(e=>toast(e.message));}});
+document.addEventListener('change',e=>{if(e.target.id==='automatic-updates')AndroidTransport.call('updates',{automatic:e.target.checked}).then(v=>{appUpdatePreferences=v;}).catch(e=>toast(e.message));});
+AndroidTransport.call('updates').then(value=>{appUpdatePreferences=value;updateCard();}).catch(()=>{});

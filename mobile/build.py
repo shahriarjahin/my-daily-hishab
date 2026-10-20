@@ -43,7 +43,7 @@ def prepare():
     (assets/'static').mkdir(parents=True,exist_ok=True)
     (assets/'mobile').mkdir(exist_ok=True)
     # Strict allowlist: no .env, Python sources, database, tokens or user backups.
-    names=['app.js','web-sync.js','extensions.js','regulars.js','finance.js','wallet-branding.js','i18n.js','back-navigation.js','navigation.js','app.css','finance.css','hishab-logo-v2.png','hishab-icon-v2-192.png','hishab-icon-v2-512.png','NotoSansBengali-400.ttf','NotoSansBengali-600.ttf','NotoSansBengali-OFL.txt']
+    names=['modern.js','modern.css','app.js','web-sync.js','extensions.js','regulars.js','finance.js','wallet-branding.js','i18n.js','back-navigation.js','navigation.js','app.css','finance.css','hishab-logo-v2.png','hishab-icon-v2-192.png','hishab-icon-v2-512.png','NotoSansBengali-400.ttf','NotoSansBengali-600.ttf','NotoSansBengali-OFL.txt']
     for name in names:shutil.copyfile(REPO/'backend/static'/name,assets/'static'/name)
     shutil.copytree(REPO/'backend/static/wallet-logos',assets/'static/wallet-logos',dirs_exist_ok=True)
     # Browser-only service worker does not apply to the APK's encrypted device database.

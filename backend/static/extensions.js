@@ -130,7 +130,7 @@ handleAction=async function(el){
 };
 
 document.addEventListener('submit',async event=>{
-  const form=event.target;if(!form.dataset.extension||form.dataset.finance)return;event.preventDefault();
+  const form=event.target;if(!form.dataset.extension||form.dataset.finance||form.dataset.modern)return;event.preventDefault();
   const data=new FormData(form),button=event.submitter;
   if(form.id==='wallet-ai-form'){await extract(data.get('text'),button,'wallets');return;}
   if(busy)return;busy=true;const label=button?.innerHTML;if(button){button.disabled=true;button.innerHTML='<span class="loading-dot"></span>';}

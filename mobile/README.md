@@ -4,7 +4,7 @@ Android 8.0 or later; targets Android 16 (API 36). Package: `com.digitxbd.hishab
 
 ## Install and use
 
-1. Copy `mobile/dist/hishab-1.0.2-release.apk` to your phone and open it. Android may ask you to allow installation from your browser or file manager.
+1. Copy `mobile/dist/hishab-1.1.0-release.apk` to your phone and open it. Android may ask you to allow installation from your browser or file manager.
 2. Sign in to your existing Supabase account while connected. Your cloud workspace downloads automatically. No financial records or login credentials are preloaded in the APK.
 3. Record income, expenses, transfers, budgets, categories, savings, loans and regulars offline. Changes commit to the phone database before network requests.
 4. Sync runs after changes, on resume, roughly every minute while open, and periodically in Android's background scheduler when a network is available. Background timing depends on Android battery restrictions. Settings → Sync & device → Sync now is also available.
@@ -70,3 +70,16 @@ The API 36 target follows [Google Play's current target API requirement](https:/
 ## Existing debt
 
 Wallets → Loans → Record a loan → Existing loan balance — no wallet change. Enter only the amount still outstanding and the original loan date. This creates a debt/receivable without an initial wallet movement. Future repayments change the selected wallet normally. This does not require AI.
+
+
+## GitHub app updates
+
+Version 1.1.0 adds Settings → App updates. Automatic checks run at most once a day when the app resumes; turn them off in Settings or check manually. Public GitHub metadata is requested without account tokens. Download starts after confirmation; the APK checksum, package ID, newer version code and signing certificate are checked before Android's installer opens. Installation always requires Android confirmation and, initially, permission to install from Hishab. Only the cached update APK can be shared with the installer.
+
+Install 1.1.0 manually once if upgrading from 1.0.x. Keep using the same release key. Publish stable GitHub releases with one `hishab-X.Y.Z-release.apk` and matching `.apk.sha256` asset. Increase both version name and version code. The updater ignores drafts and pre-releases. Downloads are limited to 30 MB and trusted GitHub HTTPS hosts. Update checks do not send financial data, account tokens or AI keys.
+
+The direct GitHub build declares REQUEST_INSTALL_PACKAGES. Before submitting a Google Play build, prepare a separate store build without the direct APK updater and its permission, and use Google Play's update flow. Store approval is not implied by this build.
+
+## Reference interface
+
+The shared UI uses cream/white and near-black/charcoal themes with amber accents. Home cash flow, grouped Activity, category budgets, Insights and the keypad entry sheet use actual workspace records. The app does not invent health scores, market investments, notifications or sample merchant brands. Existing AI, transfers, category management, savings, loans, backups and conflict tools remain accessible.

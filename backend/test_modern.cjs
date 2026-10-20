@@ -1,0 +1,40 @@
+// Isolated UI checks: synthetic records only, no network or account credentials.
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const {chromium}=require('playwright');
+const root=path.resolve(__dirname,'..'),L=require('../mobile/web/ledger.js');
+let workspace=JSON.parse(fs.readFileSync(path.join(root,'mobile/fixtures/empty-workspace.json'),'utf8'));
+const change=(url,method,body)=>{const result=L.mutate(workspace,url,method,body);workspace=result.workspace;return result.result;};
+const today=new Date().toISOString().slice(0,10)+'T12:00:00+06:00';
+change('/wallets/1','PATCH',{opening_balance:1500});
+change('/transactions','POST',{transactions:[{description:'Monthly salary',amount:30000,type:'income',category:'Salary',wallet_id:1,date:today},{description:'Groceries',amount:1250,type:'expense',category:'Food',wallet_id:1,date:today},{description:'Bus fare',amount:80,type:'expense',category:'Transport',wallet_id:1,date:today}]});
+change('/plan','PUT',{monthly_budget:15000,planned_income:30000,savings_target:6000,allocations:[{category:'Food',amount:5000},{category:'Transport',amount:2000}]});
+change('/settings','PATCH',{theme:'light'});
+(async()=>{const browser=await chromium.launch({channel:'chrome',headless:true});try{
+ const page=await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:1});const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.route('**/*',async route=>{const u=new URL(route.request().url());if(u.pathname.startsWith('/api/')){const p=u.pathname.slice(4),m=route.request().method();let result;if(p==='/cloud/status')result={signed_in:true,configured:true,cloud_mode:true,email:'demo@example.test'};else if(p==='/state')result={...L.state(workspace),revision:0};else if(p==='/ai/providers')result={providers:[],automatic_failover:true};else if(m!=='GET')result=change(p,m,route.request().postDataJSON());else result={};return route.fulfill({json:result});}let file=u.pathname.startsWith('/static/')?path.join(root,'backend',u.pathname):path.join(root,'backend/templates/app.html');if(!fs.existsSync(file))return route.fulfill({status:404,body:''});const ext=path.extname(file);return route.fulfill({body:fs.readFileSync(file),contentType:{'.html':'text/html','.js':'text/javascript','.css':'text/css','.png':'image/png','.ttf':'font/ttf'}[ext]||'application/octet-stream'});});
+ await page.goto('http://hishab-preview.test/#home');await page.locator('.cash-total').waitFor();
+ const out=path.join(root,'docs/screenshots');fs.mkdirSync(out,{recursive:true});
+ await page.screenshot({path:path.join(out,'redesign-light-home.png'),fullPage:true});
+ assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'Mobile home overflow');
+ await page.locator('.nav-create').click();await page.getByRole('button',{name:'Income',exact:true}).click();
+ await page.getByRole('button',{name:'7',exact:true}).click();await page.getByRole('button',{name:'0',exact:true}).click();
+ await page.locator('#pad-form [name="description"]').fill('Cash received');await page.locator('#pad-form [name="wallet_id"]').selectOption('1');
+ await page.screenshot({path:path.join(out,'redesign-light-entry.png'),fullPage:true});
+ await page.getByRole('button',{name:'Save income',exact:true}).click();await page.locator('#entry-dialog').waitFor({state:'hidden'});
+ assert.equal(L.state(workspace).transactions.filter(t=>t.description==='Cash received'&&t.type==='income'&&t.amount===70&&t.wallet_id===1).length,1,'Income saved once to selected wallet');
+ await page.locator('.nav-create').click();await page.getByRole('textbox',{name:'Amount in taka'}).fill('0.50');await page.locator('#pad-form [name="wallet_id"]').selectOption('2');await page.locator('#pad-form [name="description"]').fill('Second wallet expense');await page.getByRole('button',{name:'Save expense',exact:true}).click();await page.locator('#entry-dialog').waitFor({state:'hidden'});assert.equal(L.state(workspace).transactions.filter(t=>t.description==='Second wallet expense'&&t.type==='expense'&&t.amount===0.5&&t.wallet_id===2).length,1,'Nondefault wallet and decimal save');
+ await page.goto('http://hishab-preview.test/#history');await page.locator('.modern-activity').waitFor();
+ await page.locator('#history-search').fill('Cash received');assert.equal(await page.locator('.modern-activity .transaction').count(),1,'Activity search');
+ await page.locator('#history-search').fill('');await page.screenshot({path:path.join(out,'redesign-light-activity.png'),fullPage:true});
+ change('/settings','PATCH',{theme:'dark'});await page.reload();await page.locator('html[data-theme="dark"]').waitFor();
+ await page.screenshot({path:path.join(out,'redesign-dark-activity.png'),fullPage:true});
+ await page.goto('http://hishab-preview.test/#budgets');await page.locator('.budget-overview').waitFor();await page.screenshot({path:path.join(out,'redesign-dark-budgets.png'),fullPage:true});
+ await page.goto('http://hishab-preview.test/#insights');await page.locator('.modern-bars').waitFor();await page.getByRole('button',{name:'Income',exact:true}).click();assert.equal(await page.locator('.insight-total').innerText(),'৳30,070');await page.screenshot({path:path.join(out,'redesign-dark-insights.png'),fullPage:true});
+ await page.goto('http://hishab-preview.test/#hub');await page.locator('.ask-prompts button').first().click();assert.notEqual(await page.locator('textarea[name="message"]').inputValue(),'');
+ for(const route of ['wallets','goals','loans','regulars','settings','categories','connections','data','more','parser']){await page.goto('http://hishab-preview.test/#'+route);await page.locator('#main').waitFor();assert.ok((await page.locator('#main').innerText()).length>0,route+' is accessible');}
+ change('/settings','PATCH',{language:'bn'});await page.goto('http://hishab-preview.test/#home');await page.reload();await page.locator('html[lang="bn"]').waitFor();assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'Bangla mobile overflow');change('/settings','PATCH',{language:'en'});await page.reload();await page.locator('.cash-total').waitFor();
+ await page.goto('http://hishab-preview.test/#home');await page.locator('.cash-total').waitFor();await page.screenshot({path:path.join(out,'redesign-dark-home.png'),fullPage:true});
+ await page.locator('.nav-create').click();await page.screenshot({path:path.join(out,'redesign-dark-entry.png'),fullPage:true});await page.getByRole('button',{name:'Close dialog'}).click();
+ await page.setViewportSize({width:1440,height:1000});await page.screenshot({path:path.join(out,'redesign-desktop.png'),fullPage:true});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'Desktop overflow');
+ assert.deepEqual(errors,[],'No runtime errors');console.log('UI checks passed: light/dark, mobile/desktop, keypad income save, selected wallet, search, budgets.');
+}finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

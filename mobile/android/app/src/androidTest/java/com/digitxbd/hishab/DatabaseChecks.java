@@ -14,6 +14,14 @@ public final class DatabaseChecks extends Instrumentation {
     @Override public void onCreate(Bundle arguments){super.onCreate(arguments);start();}
     @Override public void onStart(){Bundle report=new Bundle();Store store=null;
         try{
+            check(AppUpdater.compareVersions("1.1.0","1.0.2")>0,"New minor update detected");
+            check(AppUpdater.compareVersions("1.10.0","1.9.9")>0,"Versions compared numerically");
+            check(AppUpdater.compareVersions("v1.1.0","1.1.0")==0,"Same version is not an update");
+            java.lang.reflect.Method trust=AppUpdater.class.getDeclaredMethod("allowed",java.net.URL.class);trust.setAccessible(true);
+            check((Boolean)trust.invoke(null,new java.net.URL("https://github.com/shahriarjahin/my-daily-hishab/releases/download/v1.1.0/test.apk")),"GitHub download allowed");
+            check(!(Boolean)trust.invoke(null,new java.net.URL("http://github.com/update.apk")),"Cleartext update blocked");
+            check(!(Boolean)trust.invoke(null,new java.net.URL("https://github.com.evil.test/update.apk")),"Lookalike update domain blocked");
+            check(!(Boolean)trust.invoke(null,new java.net.URL("https://user:password@github.com/update.apk")),"Credential-bearing update URL blocked");
             store=new Store(getTargetContext());
             String a="instrumentation-account-a",b="instrumentation-account-b";
             store.getWritableDatabase().delete("workspace","user_id IN (?,?)",new String[]{a,b});
