@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useStore } from "../context";
 import { Title, Empty, Button, Card } from "../components/UI";
 import { Icon } from "../components/Icon";
@@ -23,7 +23,12 @@ export function Activity({
     [max, setMax] = useState(""),
     [from, setFrom] = useState(""),
     [to, setTo] = useState(""),
-    [advanced, setAdvanced] = useState(false);
+    [advanced, setAdvanced] = useState(false),
+    [visible, setVisible] = useState(100);
+  useEffect(
+    () => setVisible(100),
+    [search, type, period, wallet, category, min, max, from, to],
+  );
   const forms = formFactory(s!),
     today = day(),
     week = new Date(today + "T12:00:00Z");
@@ -80,6 +85,17 @@ export function Activity({
       );
     })
     .sort((a, b) => b.date.localeCompare(a.date));
+  const dated = filtered.map((r) => ({
+    entry: r,
+    key: r.date ? day(r.date) : "",
+  }));
+  const dailyNet = new Map<string, number>();
+  for (const { entry: r, key } of dated)
+    dailyNet.set(
+      key,
+      (dailyNet.get(key) || 0) +
+        (r.type === "income" ? r.amount : r.type === "expense" ? -r.amount : 0),
+    );
   let previous = "";
   const csv = () => {
     const safe = (v: unknown) => {
@@ -260,23 +276,10 @@ export function Activity({
       )}
       <section className="modern-activity">
         {filtered.length ? (
-          filtered.map((r) => {
-            const key = r.date ? day(r.date) : "";
+          dated.slice(0, visible).map(({ entry: r, key }) => {
             const label = key !== previous;
             previous = key;
-            const rows = filtered.filter(
-                (x) => (x.date ? day(x.date) : "") === key,
-              ),
-              net = rows.reduce(
-                (s, r) =>
-                  s +
-                  (r.type === "income"
-                    ? r.amount
-                    : r.type === "expense"
-                      ? -r.amount
-                      : 0),
-                0,
-              );
+            const net = dailyNet.get(key) || 0;
             return (
               <div key={r.kind + "-" + r.id}>
                 {label && (
@@ -334,6 +337,11 @@ export function Activity({
           <Empty text="No entries yet" />
         )}
       </section>
+      {visible < filtered.length && (
+        <Button secondary onClick={() => setVisible((n) => n + 100)}>
+          {t("Show more")}
+        </Button>
+      )}
     </>
   );
 }

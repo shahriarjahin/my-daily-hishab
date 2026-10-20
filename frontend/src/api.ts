@@ -1,6 +1,7 @@
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import ledgerSource from "../../mobile/web/ledger.js";
 import type { WorkspaceState, CloudStatus } from "./types";
+import { restoreBackup } from "./backup";
 interface DeviceLedger {
   state(workspace: unknown): WorkspaceState;
   mutate(
@@ -41,7 +42,12 @@ async function nativeRequest<T>(
   body: unknown,
 ): Promise<T> {
   if (path === "/cloud/status") return device<T>("status");
-  if (path === "/auth/security" || path.startsWith("/auth/mfa") || path.startsWith("/auth/passkeys")) return device<T>("security",{path,method,body});
+  if (
+    path === "/auth/security" ||
+    path.startsWith("/auth/mfa") ||
+    path.startsWith("/auth/passkeys")
+  )
+    return device<T>("security", { path, method, body });
   if (path.startsWith("/auth/")) return device<T>(path.split("/").pop()!, body);
   if (path === "/ai/providers" && method === "GET")
     return device<T>("providers");
@@ -63,7 +69,16 @@ async function nativeRequest<T>(
   }
   if (revision !== undefined && revision !== local.seq)
     throw new ApiError("Records changed. Reload before saving.", 409);
-  const change = ledger.mutate(local.workspace, path, method, body);
+  const change =
+    path === "/cloud/import" && method === "POST"
+      ? {
+          workspace: restoreBackup(
+            local.workspace,
+            (body as { data: unknown }).data,
+          ),
+          result: { imported: true },
+        }
+      : ledger.mutate(local.workspace, path, method, body);
   const saved = await device<{ seq: number }>("save", {
     workspace: change.workspace,
     seq: local.seq,

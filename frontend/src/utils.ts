@@ -1,14 +1,13 @@
 import type { Transaction } from "./types";
+const dhakaDate = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Asia/Dhaka",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
 export const day = (value: string | Date = new Date()) => {
   const p = Object.fromEntries(
-    new Intl.DateTimeFormat("en-CA", {
-      timeZone: "Asia/Dhaka",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    })
-      .formatToParts(new Date(value))
-      .map((p) => [p.type, p.value]),
+    dhakaDate.formatToParts(new Date(value)).map((p) => [p.type, p.value]),
   );
   return `${p.year}-${p.month}-${p.day}`;
 };

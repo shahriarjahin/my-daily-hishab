@@ -785,5 +785,8 @@
   "Passkeys require a supported browser and HTTPS.": "পাসকির জন্য সমর্থিত ব্রাউজার ও এইচটিটিপিএস প্রয়োজন।",
   "Passkey request cancelled.": "পাসকির অনুরোধ বাতিল হয়েছে।",
   "Your offline records will stay on this phone.": "আপনার অফলাইন হিসাব এই ফোনেই থাকবে।",
-  "Unfinished setup": "অসম্পূর্ণ সেটআপ"
+  "Unfinished setup": "অসম্পূর্ণ সেটআপ",
+  "Show more": "আরও দেখুন",
+  "Import is only available for an empty account. Existing records will not be replaced.": "শুধু খালি হিসাবে আমদানি করা যাবে। আগের হিসাব বদলানো হবে না।",
+  "Release {name}": "{name} সঞ্চয় মুক্ত করুন"
 }

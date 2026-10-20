@@ -6,6 +6,7 @@ import { day, total, palette, walletLogo } from "../utils";
 import type { Transaction } from "../types";
 import type { Editor } from "../forms";
 import { formFactory } from "../forms";
+import { cashFlowSeries } from "../cashFlow";
 export function TransactionRow({
   entry,
   edit,
@@ -107,31 +108,9 @@ export function Breakdown({ rows }: { rows: Transaction[] }) {
 }
 function FlowGraph({ rows, start }: { rows: Transaction[]; start: string }) {
   const { money, t } = useStore(),
-    end = day(),
-    days =
-      Math.round(
-        (new Date(end + "T12:00:00Z").getTime() -
-          new Date(start + "T12:00:00Z").getTime()) /
-          86400000,
-      ) + 1;
-  let net = 0;
-  const values = Array.from({ length: days }, (_, i) => {
-    const date = new Date(
-      new Date(start + "T12:00:00Z").getTime() + i * 86400000,
-    )
-      .toISOString()
-      .slice(0, 10);
-    net +=
-      total(
-        rows.filter((t) => day(t.date) === date),
-        "income",
-      ) -
-      total(
-        rows.filter((t) => day(t.date) === date),
-        "expense",
-      );
-    return net;
-  });
+    end = day();
+  const values = cashFlowSeries(rows, start, end);
+  const net = values.at(-1) || 0;
   const min = Math.min(0, ...values),
     max = Math.max(0, ...values),
     points = values
@@ -278,12 +257,14 @@ export function Dashboard({
                 ["loans", "Loans", "business"],
                 ["parser", "Import", "history"],
               ] as const
-            ).filter(([route])=>s!.settings.ai_enabled || route !== "parser").map(([route, label, icon]) => (
-              <button key={route} onClick={() => navigate(route)}>
-                <Icon name={icon} />
-                <span>{t(label)}</span>
-              </button>
-            ))}
+            )
+              .filter(([route]) => s!.settings.ai_enabled || route !== "parser")
+              .map(([route, label, icon]) => (
+                <button key={route} onClick={() => navigate(route)}>
+                  <Icon name={icon} />
+                  <span>{t(label)}</span>
+                </button>
+              ))}
           </div>
         </div>
         <aside className="cash-side">

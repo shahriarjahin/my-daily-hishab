@@ -1,6 +1,103 @@
 @import "../../backend/static/app.css";
 @import "../../backend/static/finance.css";
 @import "../../backend/static/modern.css";
+.goal-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.goal-actions button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 16px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  text-align: left;
+  font-weight: 600;
+  cursor: pointer;
+}
+.goal-create-action {
+  background: var(--text);
+  color: var(--bg);
+}
+.goal-reserve-action {
+  background: var(--panel);
+  color: var(--text);
+}
+.goal-actions svg {
+  width: 23px;
+  height: 23px;
+  flex-shrink: 0;
+}
+.goal-create-action svg:last-child {
+  width: 18px;
+  margin-left: auto;
+}
+.goal-reserve-action svg {
+  color: #4caf88;
+}
+.goal-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.goal-card-header > h2,
+.goal-card-header > strong {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.45;
+}
+.goal-card-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 4px;
+}
+.goal-card-actions .icon-button {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  padding: 10px;
+  color: var(--muted);
+}
+.goal-card-actions svg {
+  width: 19px;
+  height: 19px;
+}
+.goal-card-actions .goal-delete {
+  color: #d96352;
+}
+.goal-card .progress {
+  margin: 18px 0 4px;
+  clear: both;
+}
+.saving-card {
+  margin: 14px 0;
+}
+.saving-card .muted {
+  margin: 0 0 12px;
+  overflow-wrap: anywhere;
+}
+.goal-actions button:focus-visible,
+.goal-card-actions button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+@media (max-width: 440px) {
+  .goal-actions {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .goal-actions button {
+    padding: 16px;
+  }
+}
 .modern-heading .page-title {
   display: flex;
   align-items: center;
@@ -309,8 +406,29 @@ button:focus-visible {
     margin-top: 10px;
   }
   main {
-    padding-top: max(26px, env(safe-area-inset-top));
+    padding-top: calc(26px + env(safe-area-inset-top, 0px));
     padding-bottom: calc(105px + env(safe-area-inset-bottom));
+  }
+}
+
+/* Keep installed iPhone web-app controls out of the system's top-edge effect.
+   Use an opaque surface; applying backdrop-filter here can blur the title. */
+@supports (-webkit-touch-callout: none) {
+  @media (max-width: 720px) and (display-mode: standalone) {
+    main#main {
+      padding-top: 0;
+    }
+    main#main > .modern-heading {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      margin: 0 -21px 20px;
+      padding: calc(18px + env(safe-area-inset-top, 0px)) 21px 16px;
+      background: var(--bg);
+      isolation: isolate;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
   }
 }
 

@@ -322,7 +322,7 @@ export function SettingsScreen({
             {t("{count} wallets", { count: s!.wallets.length })}
           </p>
         </Card>
-        {!native && (
+        {
           <Card className="section-gap">
             <h2>{t("Import previous records")}</h2>
             <p className="form-hint">
@@ -357,7 +357,7 @@ export function SettingsScreen({
               {t("Import")}
             </Button>
           </Card>
-        )}
+        }
         {native && !cloud?.offline && <DeviceSettings />}
         <ErrorMessage message={error} />
       </>

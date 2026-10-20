@@ -28,14 +28,53 @@ export function Wealth({
       {route === "wallets" && (
         <>
           <section className="wallet-actions" aria-label={t("Wallet actions")}>
-            <button aria-label={t("Add wallet")} className="wallet-create-action" onClick={()=>edit(forms.wallet())}>
-              <span className="wallet-action-icon"><Icon name="wallet-add"/></span><span><strong>{t("Add wallet")}</strong><small>{t("Cash, bank or mobile account")}</small></span><Icon name="arrow"/>
+            <button
+              aria-label={t("Add wallet")}
+              className="wallet-create-action"
+              onClick={() => edit(forms.wallet())}
+            >
+              <span className="wallet-action-icon">
+                <Icon name="wallet-add" />
+              </span>
+              <span>
+                <strong>{t("Add wallet")}</strong>
+                <small>{t("Cash, bank or mobile account")}</small>
+              </span>
+              <Icon name="arrow" />
             </button>
             <div className="wallet-tools">
-              <button aria-label={t("Transfer")} className="wallet-transfer-action" onClick={()=>edit(forms.transfer())}><span className="wallet-action-icon"><Icon name="transfer"/></span><strong>{t("Transfer")}</strong><small>{t("Between your wallets")}</small></button>
-              <button aria-label={t("Loans")} className="wallet-loans-action" onClick={()=>navigate("loans")}><span className="wallet-action-icon"><Icon name="loans"/></span><strong>{t("Loans")}</strong><small>{t("Borrowed & lent")}</small></button>
+              <button
+                aria-label={t("Transfer")}
+                className="wallet-transfer-action"
+                onClick={() => edit(forms.transfer())}
+              >
+                <span className="wallet-action-icon">
+                  <Icon name="transfer" />
+                </span>
+                <strong>{t("Transfer")}</strong>
+                <small>{t("Between your wallets")}</small>
+              </button>
+              <button
+                aria-label={t("Loans")}
+                className="wallet-loans-action"
+                onClick={() => navigate("loans")}
+              >
+                <span className="wallet-action-icon">
+                  <Icon name="loans" />
+                </span>
+                <strong>{t("Loans")}</strong>
+                <small>{t("Borrowed & lent")}</small>
+              </button>
             </div>
-            {s!.settings.ai_enabled && <button className="text-button wallet-ai-action" onClick={()=>navigate("parser")}><Icon name="spark"/>{t("AI balances")}</button>}
+            {s!.settings.ai_enabled && (
+              <button
+                className="text-button wallet-ai-action"
+                onClick={() => navigate("parser")}
+              >
+                <Icon name="spark" />
+                {t("AI balances")}
+              </button>
+            )}
           </section>
           <div className="record-grid">
             {s!.wallets.map((w) => (
@@ -75,13 +114,22 @@ export function Wealth({
       )}
       {route === "goals" && (
         <>
-          <div className="toolbar">
-            <Button onClick={() => edit(forms.goal())}>
-              {t("Add")} {t("Goals")}
-            </Button>
-            <Button secondary onClick={() => edit(forms.saving())}>
-              {t("Reserve savings")}
-            </Button>
+          <div className="goal-actions">
+            <button
+              className="goal-create-action"
+              onClick={() => edit(forms.goal())}
+            >
+              <Icon name="target" />
+              <span>{t("Add goal")}</span>
+              <Icon name="plus" />
+            </button>
+            <button
+              className="goal-reserve-action"
+              onClick={() => edit(forms.saving())}
+            >
+              <Icon name="savings" />
+              <span>{t("Reserve savings")}</span>
+            </button>
           </div>
           <div className="record-grid">
             {s!.goals.map((g) => {
@@ -89,48 +137,65 @@ export function Wealth({
                 .filter((x) => x.goal_id === g.id)
                 .reduce((sum, x) => sum + x.amount, 0);
               return (
-                <Card key={g.id}>
-                  <h2>{g.name}</h2>
+                <Card key={g.id} className="goal-card">
+                  <div className="goal-card-header">
+                    <h2>{g.name}</h2>
+                    <div className="goal-card-actions">
+                      <button
+                        className="icon-button"
+                        aria-label={t("Edit {name}", { name: g.name })}
+                        title={t("Edit")}
+                        onClick={() => edit(forms.goal(g))}
+                      >
+                        <Icon name="edit" />
+                      </button>
+                      <button
+                        className="icon-button goal-delete"
+                        aria-label={t("Delete {name}", { name: g.name })}
+                        title={t("Delete")}
+                        onClick={() => remove("/goals/" + g.id, g.name)}
+                      >
+                        <Icon name="trash" />
+                      </button>
+                    </div>
+                  </div>
                   <strong className="insight-total">{money(saved)}</strong>
                   <p className="muted">
                     / {money(g.target)} {g.due_date && " · " + g.due_date}
                   </p>
                   <Progress used={saved} limit={g.target} label={g.name} />
-                  <div className="toolbar">
-                    <Button secondary onClick={() => edit(forms.goal(g))}>
-                      {t("Edit")}
-                    </Button>
-                    <button
-                      className="text-button"
-                      onClick={() => remove("/goals/" + g.id, g.name)}
-                    >
-                      {t("Delete")}
-                    </button>
-                  </div>
                 </Card>
               );
             })}
           </div>
           <h2 className="section-gap">{t("Savings")}</h2>
           {s!.savings.map((x) => (
-            <Card key={x.id} className="list-card">
-              <div>
+            <Card key={x.id} className="saving-card">
+              <div className="goal-card-header">
                 <strong>{t(x.category)}</strong>
-                <p className="muted">
-                  {s!.wallets.find((w) => w.id === x.wallet_id)?.name} ·{" "}
-                  {x.note}
-                </p>
+                <div className="goal-card-actions">
+                  <button
+                    className="icon-button"
+                    aria-label={t("Edit {name}", { name: t(x.category) })}
+                    title={t("Edit")}
+                    onClick={() => edit(forms.saving(x))}
+                  >
+                    <Icon name="edit" />
+                  </button>
+                  <button
+                    className="icon-button goal-delete"
+                    aria-label={t("Release {name}", { name: t(x.category) })}
+                    title={t("Release")}
+                    onClick={() => remove("/savings/" + x.id, x.category)}
+                  >
+                    <Icon name="trash" />
+                  </button>
+                </div>
               </div>
+              <p className="muted">
+                {s!.wallets.find((w) => w.id === x.wallet_id)?.name} · {x.note}
+              </p>
               <strong>{money(x.amount)}</strong>
-              <Button secondary onClick={() => edit(forms.saving(x))}>
-                {t("Edit")}
-              </Button>
-              <button
-                className="text-button"
-                onClick={() => remove("/savings/" + x.id, x.category)}
-              >
-                {t("Release")}
-              </button>
             </Card>
           ))}
         </>
@@ -191,25 +256,36 @@ export function Wealth({
                 ),
                 spent = total(entries);
               return (
-                <Card key={r.id}>
-                  <h2>{r.name}</h2>
+                <Card key={r.id} className="goal-card regular-card">
+                  <div className="goal-card-header">
+                    <h2>{r.name}</h2>
+                    <div className="goal-card-actions">
+                      <button
+                        type="button"
+                        className="icon-button"
+                        aria-label={t("Edit {name}", { name: r.name })}
+                        title={t("Edit")}
+                        onClick={() => edit(forms.regular(r))}
+                      >
+                        <Icon name="edit" />
+                      </button>
+                      <button
+                        type="button"
+                        className="icon-button goal-delete"
+                        aria-label={t("Delete {name}", { name: r.name })}
+                        title={t("Delete")}
+                        onClick={() => remove("/regulars/" + r.id, r.name)}
+                      >
+                        <Icon name="trash" />
+                      </button>
+                    </div>
+                  </div>
                   <strong className="insight-total">{money(spent)}</strong>
                   <p className="muted">
                     {entries.reduce((n, x) => n + (x.quantity || 0), 0)}{" "}
                     {t(r.unit)} · {t("Today")}
                   </p>
                   <Progress used={spent} limit={r.daily_limit} label={r.name} />
-                  <div className="toolbar">
-                    <Button secondary onClick={() => edit(forms.regular(r))}>
-                      {t("Edit")}
-                    </Button>
-                    <button
-                      className="text-button"
-                      onClick={() => remove("/regulars/" + r.id, r.name)}
-                    >
-                      {t("Delete")}
-                    </button>
-                  </div>
                 </Card>
               );
             })}
