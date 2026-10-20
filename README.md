@@ -23,6 +23,65 @@ React · TypeScript · Capacitor · FastAPI · Supabase
 
 ---
 
+## See Hishab in action
+
+Screenshots captured on iPhone by the developer, using the demo account. Select any image to view it at full resolution.
+
+<table>
+  <tr>
+    <td align="center"><strong>Home & cash flow</strong><br /><br /><a href="screenshots/home.PNG"><img src="screenshots/home.PNG" width="240" alt="Hishab — Home & cash flow" /></a></td>
+    <td align="center"><strong>Activity & filters</strong><br /><br /><a href="screenshots/activity.PNG"><img src="screenshots/activity.PNG" width="240" alt="Hishab — Activity & filters" /></a></td>
+    <td align="center"><strong>Spending insights</strong><br /><br /><a href="screenshots/insights.PNG"><img src="screenshots/insights.PNG" width="240" alt="Hishab — Spending insights" /></a></td>
+  </tr>
+</table>
+
+### Your preferred look, your language
+
+<table>
+  <tr>
+    <td align="center"><strong>Light theme</strong><br /><br /><a href="screenshots/light_theme.PNG"><img src="screenshots/light_theme.PNG" width="260" alt="Hishab — Light theme" /></a></td>
+    <td align="center"><strong>Glass theme · বাংলা</strong><br /><br /><a href="screenshots/glass_theme_BNG.PNG"><img src="screenshots/glass_theme_BNG.PNG" width="260" alt="Hishab — Glass theme · বাংলা" /></a></td>
+  </tr>
+</table>
+
+<details>
+<summary><strong>Explore wallets, goals, budgeting and more</strong></summary>
+
+<table>
+  <tr>
+    <td align="center"><strong>Wallets</strong><br /><br /><a href="screenshots/wallets.PNG"><img src="screenshots/wallets.PNG" width="240" alt="Hishab — Wallets" /></a></td>
+    <td align="center"><strong>Budgets</strong><br /><br /><a href="screenshots/budgets.PNG"><img src="screenshots/budgets.PNG" width="240" alt="Hishab — Budgets" /></a></td>
+    <td align="center"><strong>Goals & savings</strong><br /><br /><a href="screenshots/goals.PNG"><img src="screenshots/goals.PNG" width="240" alt="Hishab — Goals & savings" /></a></td>
+  </tr>
+</table>
+
+<table>
+  <tr>
+    <td align="center"><strong>Quick entry</strong><br /><br /><a href="screenshots/add_entry.PNG"><img src="screenshots/add_entry.PNG" width="240" alt="Hishab — Quick entry" /></a></td>
+    <td align="center"><strong>Wallet transfers</strong><br /><br /><a href="screenshots/wallet_transfer.PNG"><img src="screenshots/wallet_transfer.PNG" width="240" alt="Hishab — Wallet transfers" /></a></td>
+    <td align="center"><strong>Loans & repayments</strong><br /><br /><a href="screenshots/loans.PNG"><img src="screenshots/loans.PNG" width="240" alt="Hishab — Loans & repayments" /></a></td>
+  </tr>
+</table>
+
+<table>
+  <tr>
+    <td align="center"><strong>Categories</strong><br /><br /><a href="screenshots/categories.PNG"><img src="screenshots/categories.PNG" width="240" alt="Hishab — Categories" /></a></td>
+    <td align="center"><strong>Settings</strong><br /><br /><a href="screenshots/settings.PNG"><img src="screenshots/settings.PNG" width="240" alt="Hishab — Settings" /></a></td>
+    <td align="center"><strong>Import & export</strong><br /><br /><a href="screenshots/data_export_import.PNG"><img src="screenshots/data_export_import.PNG" width="240" alt="Hishab — Import & export" /></a></td>
+  </tr>
+</table>
+
+<table>
+  <tr>
+    <td align="center"><strong>Sign in & passkeys</strong><br /><br /><a href="screenshots/sign_in.PNG"><img src="screenshots/sign_in.PNG" width="260" alt="Hishab — Sign in & passkeys" /></a></td>
+    <td align="center"><strong>Create an account</strong><br /><br /><a href="screenshots/sign_up.PNG"><img src="screenshots/sign_up.PNG" width="260" alt="Hishab — Create an account" /></a></td>
+  </tr>
+</table>
+
+</details>
+
+[Browse all 16 screenshots](screenshots/README.md) · [Showcase gallery source](docs/demo/showcase.html)
+
 ## Everything in one place
 
 | Manage | Plan | Understand |
