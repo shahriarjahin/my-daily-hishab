@@ -41,6 +41,7 @@ async function nativeRequest<T>(
   body: unknown,
 ): Promise<T> {
   if (path === "/cloud/status") return device<T>("status");
+  if (path === "/auth/security" || path.startsWith("/auth/mfa") || path.startsWith("/auth/passkeys")) return device<T>("security",{path,method,body});
   if (path.startsWith("/auth/")) return device<T>(path.split("/").pop()!, body);
   if (path === "/ai/providers" && method === "GET")
     return device<T>("providers");

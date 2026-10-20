@@ -12,6 +12,7 @@ public final class HishabPlugin extends Plugin {
     @PluginMethod public void execute(PluginCall call){
         String op=call.getString("op","");JSONObject body=call.getObject("body",new JSObject());
         if(body.toString().length()>9000000){call.reject("Request is too large.");return;}
+        if(op.equals("passkey")){Passkeys.begin(this,call,body.optBoolean("registration"));return;}
         if(op.equals("exit")){getActivity().runOnUiThread(()->{getActivity().moveTaskToBack(true);call.resolve(new JSObject().put("data",true));});return;}
         if(op.equals("updates")){getActivity().runOnUiThread(()->{try{MainActivity activity=(MainActivity)getActivity();if(body.has("automatic"))activity.updater.setAutomatic(body.getBoolean("automatic"));if(body.optBoolean("check"))activity.updater.check(true);call.resolve(new JSObject().put("data",new JSONObject().put("automatic",activity.updater.automatic()).put("version",getContext().getPackageManager().getPackageInfo(getContext().getPackageName(),0).versionName)));}catch(Exception e){call.reject("Could not check app updates.");}});return;}
         if(op.equals("export")){Intent intent=new Intent(Intent.ACTION_CREATE_DOCUMENT);intent.addCategory(Intent.CATEGORY_OPENABLE);intent.setType(body.optString("mime","application/json"));intent.putExtra(Intent.EXTRA_TITLE,body.optString("name","hishab-backup.json"));getActivity().runOnUiThread(()->{try{startActivityForResult(call,intent,"saveExport");}catch(Exception e){call.reject("No document picker is available.");}});return;}

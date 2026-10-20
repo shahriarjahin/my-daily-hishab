@@ -33,3 +33,23 @@ The switch defaults to false for a safe staged rollout. An already encrypted wor
 ## Optional AI and currencies
 
 AI is off by default. Enable it in Settings before connecting providers or sending records to AI. Currency changes the unit shown throughout the app; it does not convert existing balances or support separate exchange rates per wallet.
+
+## Optional MFA and passkeys
+
+MFA enrollment and passkeys are optional, per account. Email/password remains available. Once an account has a verified second factor, Hishab requires verification before cloud records are loaded. Configure MFA from Account security. Keep the authenticator setup key safely; removing a verified factor requires a verified session.
+
+Apply `supabase/migrations/002_optional_mfa.sql` after migration 001. This adds restrictive database policies as well as the app server checks, without requiring MFA for users who have not opted in. Deploy compatible web and Android clients before enabling MFA on accounts using older clients.
+
+Passkeys remain experimental in Supabase. Configure Authentication → Passkeys with display name Hishab, relying party ID `mydailyhishab.vercel.app`, and origin `https://mydailyhishab.vercel.app`. Do not change an existing RP ID without considering registered passkeys: changing it invalidates those credentials. Production passkeys cannot be tested from localhost under that RP ID.
+
+Android uses Credential Manager, with the same private release signing key. Deploy the public `/.well-known/assetlinks.json` endpoint and add this Android origin to the allowed Supabase origins:
+
+`android:apk-key-hash:D8HNmgvs5UvKq_BFFqQcnHte8n1GIndxqsN43wPAZtI`
+
+Real passkey registration and MFA enrollment must be completed by the account owner on their device. Test code uses synthetic credentials; it never creates a passkey or changes MFA on a real account.
+
+## Android offline mode and onboarding
+
+The Android welcome screen asks for a name and offers offline use or cloud sign-in. Web remains cloud-only. Offline data stays in the app's encrypted SQLite workspace and is separate from cloud accounts. Switching mode preserves it and never automatically uploads or merges it. Choose offline again to reopen it; export a backup from Data & app before transferring records manually. Offline mode has no AI, account security, automatic update checks, or sync traffic. The APK bundles the interface, so it can start without an internet connection.
+
+New users on both web and Android are asked for their name before entering their workspace. Empty accounts receive a skippable six-step quick start. Completion is saved with the workspace; it can be replayed from Settings.

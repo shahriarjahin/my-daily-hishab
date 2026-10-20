@@ -193,6 +193,7 @@ def apply_wallet_balances(body: BalanceBatch, session: Session = Depends(get_ses
 class AuthInput(Input):
     email: str = Field(min_length=3, max_length=254)
     password: SecretStr = Field(min_length=6, max_length=1024)
+    name: str = Field(default="", max_length=60)
 
 
 @router.post("/auth/login")
@@ -206,7 +207,7 @@ def login(body: AuthInput, response: Response):
 def signup(body: AuthInput, response: Response, request: Request):
     from .auth import app_origin
     from urllib.parse import urlencode
-    data = cloud.call("POST", "/auth/v1/signup?" + urlencode({"redirect_to": app_origin(request) + "/auth/callback"}), body={"email": body.email.strip(), "password": body.password.get_secret_value()})
+    data = cloud.call("POST", "/auth/v1/signup?" + urlencode({"redirect_to": app_origin(request) + "/auth/callback"}), body={"email": body.email.strip(), "password": body.password.get_secret_value(), "data":{"name":body.name.strip(),"hishab_name":body.name.strip()}})
     if data.get("access_token"):
         cloud.set_cookie(response, cloud.token_data(data))
     return {"signed_in": bool(data.get("access_token")), "message": "You can sign in now." if data.get("access_token") else "Check your email to confirm your account, then sign in."}
@@ -230,7 +231,10 @@ def cloud_status():
     identity = cloud.CURRENT_USER.get()
     status = {"configured": bool(url and key), "cloud_mode": cloud.cloud_mode(), "signed_in": bool(identity),
               "email": identity["user"].get("email") if identity else None,
-              "project_url": url, "revision": 0, "has_backup": False, "setup_required": False}
+              "name": identity["user"].get("name","") if identity else "", "project_url": url, "revision": 0, "has_backup": False, "setup_required": False}
+    if identity and identity.get("mfa_required"):
+        status.update(mfa_required=True, factors=[f for f in identity["user"].get("factors",[]) if f.get("status")=="verified"])
+        return status
     if identity:
         try:
             row = cloud.read_workspace()

@@ -66,7 +66,7 @@ def forgot_password(body: EmailInput, request: Request, response: Response):
 
 @router.put("/api/auth/password")
 def change_password(body: PasswordInput):
-    identity = cloud.user()
+    identity = cloud.require_assurance()
     values = {"password": body.password.get_secret_value()}
     if body.current_password:
         values["current_password"] = body.current_password.get_secret_value()

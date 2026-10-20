@@ -28,6 +28,7 @@ const routes = new Set<Route>([
   "data",
   "more",
   "password",
+  "security",
 ]);
 const currentRoute = () =>
   routes.has(location.hash.slice(1) as Route)
@@ -93,6 +94,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (!account.signed_in) {
         setState(null);
         resetRevision();
+        return;
+      }
+      if (account.mfa_required) {
+        setState(null);
         return;
       }
       if (account.setup_required) return;
@@ -230,7 +235,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         t: (text, values) => translate(text, language, values),
         money: (n) =>
           new Intl.NumberFormat(language === "bn" ? "bn-BD" : "en-IN", {
-            style: "currency", currency: state?.settings.currency || "BDT", currencyDisplay: "narrowSymbol", minimumFractionDigits: 0, maximumFractionDigits: 2,
+            style: "currency",
+            currency: state?.settings.currency || "BDT",
+            currencyDisplay: "narrowSymbol",
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2,
           }).format(n),
       }}
     >

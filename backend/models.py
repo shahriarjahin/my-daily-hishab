@@ -49,6 +49,7 @@ class AppSetting(SQLModel, table=True):
     theme: str = "dark"
     language: str = "en"
     review_before_saving: bool = True
+    tutorial_seen: bool = False
     ai_enabled: bool = False
     currency: str = "BDT"
     bottom_nav: str = "wallets"

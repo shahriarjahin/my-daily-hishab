@@ -21,7 +21,7 @@ public final class MainActivity extends BridgeActivity {
         try{Runtime runtime=Runtime.get(this);runtime.listener=()->runOnUiThread(()->{if(getBridge()!=null)getBridge().getWebView().evaluateJavascript("window.dispatchEvent(new Event('device-sync'))",null);});}catch(Exception ignored){}
         ((JobScheduler)getSystemService(JOB_SCHEDULER_SERVICE)).schedule(new JobInfo.Builder(1,new ComponentName(this,SyncJob.class)).setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY).setPeriodic(15*60*1000).build());
     }
-    @Override public void onResume(){super.onResume();try{Runtime.get(this).scheduleSync();}catch(Exception ignored){}if(updater!=null)updater.maybeCheck();}
+    @Override public void onResume(){super.onResume();try{Runtime.get(this).scheduleSync();}catch(Exception ignored){}try{Runtime runtime=Runtime.get(this);if(updater!=null&&!runtime.offline()&&runtime.session()!=null)updater.maybeCheck();}catch(Exception ignored){}}
     @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);if(request==12&&getPackageManager().canRequestPackageInstalls()&&updater!=null)updater.install();}
     void handleBack(){if(getBridge()!=null)getBridge().getWebView().evaluateJavascript("window.dispatchEvent(new Event('hishab-back'))",null);}
     @Override public void onBackPressed(){handleBack();}

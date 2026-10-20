@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.get_login_creds"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.digitxbd.hishab",
+      "sha256_cert_fingerprints": [
+        "0F:C1:CD:9A:0B:EC:E5:4B:CA:AB:F0:45:16:A4:1C:9C:7B:5E:F2:7D:46:22:77:71:AA:C3:78:DF:03:C0:66:D2"
+      ]
+    }
+  }
+]

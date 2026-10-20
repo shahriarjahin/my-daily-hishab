@@ -81,6 +81,7 @@ export interface Settings {
   theme: Theme;
   language: "en" | "bn";
   review_before_saving: boolean;
+  tutorial_seen: boolean;
   ai_enabled: boolean;
   currency: string;
   bottom_nav: Route;
@@ -139,6 +140,15 @@ export interface WorkspaceState {
   }[];
 }
 export interface CloudStatus {
+  name?: string;
+  offline?: boolean;
+  mfa_required?: boolean;
+  factors?: {
+    id: string;
+    factor_type: string;
+    friendly_name?: string;
+    status: string;
+  }[];
   signed_in: boolean;
   configured: boolean;
   setup_required?: boolean;
@@ -199,4 +209,5 @@ export type Route =
   | "connections"
   | "data"
   | "password"
+  | "security"
   | "more";

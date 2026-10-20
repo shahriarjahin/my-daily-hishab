@@ -51,14 +51,27 @@ public final class DatabaseChecks extends Instrumentation {
             check(store.load(a).getBoolean("dirty")&&store.load(a).getLong("revision")==13,"Device choice retains pending work against latest revision");
             store.close();store=new Store(getTargetContext());
             check(store.load(a).getJSONObject("workspace").getString("label").equals("device choice"),"SQLite survives close and reopen");
-            Runtime.get(getTargetContext()).session(null);
+            Runtime runtime=Runtime.get(getTargetContext());runtime.session(null);
+            JSONObject offline=runtime.call("offline",new JSONObject().put("name","Offline tester")) instanceof JSONObject?(JSONObject)runtime.call("status",new JSONObject()):new JSONObject();
+            check(offline.getBoolean("offline")&&offline.getBoolean("signed_in"),"Offline mode needs no cloud session");
+            check(runtime.user().equals("__offline__"),"Offline account is isolated");
+            check(runtime.store.load(runtime.user()).getBoolean("exists"),"Offline workspace exists without network");
+            runtime.sync();check(runtime.offline(),"Offline sync remains offline");
+            check(((JSONObject)runtime.call("providers",new JSONObject())).getJSONArray("providers").length()==0,"No AI providers in offline mode");
+            runtime.call("logout",new JSONObject());check(!runtime.offline(),"Mode switching leaves local records preserved");
+            check(runtime.store.load("__offline__").getBoolean("exists"),"Offline records survive mode switching");
+            String aal1="x."+android.util.Base64.encodeToString("{\"aal\":\"aal1\"}".getBytes("UTF-8"),android.util.Base64.URL_SAFE|android.util.Base64.NO_PADDING|android.util.Base64.NO_WRAP)+".x";
+            JSONObject factor=new JSONObject().put("status","verified").put("factor_type","totp");
+            JSONObject mfa=new JSONObject().put("access_token",aal1).put("user",new JSONObject().put("factors",new org.json.JSONArray().put(factor)));
+            check(runtime.needsMfa(mfa),"Verified MFA requires step-up");
+            mfa.getJSONObject("user").put("factors",new org.json.JSONArray());check(!runtime.needsMfa(mfa),"MFA stays optional for unenrolled users");
             android.content.Intent launch=new android.content.Intent(getTargetContext(),MainActivity.class).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
             MainActivity activity=(MainActivity)startActivitySync(launch);
             boolean loginReady=false;
             for(int retry=0;retry<100&&!loginReady;retry++){
                 java.util.concurrent.CountDownLatch latch=new java.util.concurrent.CountDownLatch(1);
                 java.util.concurrent.atomic.AtomicReference<String> result=new java.util.concurrent.atomic.AtomicReference<>();
-                runOnMainSync(()->activity.getBridge().getWebView().evaluateJavascript("Boolean(document.querySelector('#auth-form')&&window.Capacitor&&window.Capacitor.isNativePlatform())",value->{result.set(value);latch.countDown();}));
+                runOnMainSync(()->activity.getBridge().getWebView().evaluateJavascript("Boolean(document.querySelector('.welcome-options')&&window.Capacitor&&window.Capacitor.isNativePlatform())",value->{result.set(value);latch.countDown();}));
                 latch.await(2,java.util.concurrent.TimeUnit.SECONDS);loginReady="true".equals(result.get());
                 if(!loginReady)Thread.sleep(200);
             }

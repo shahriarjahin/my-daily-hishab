@@ -55,6 +55,15 @@ def get_session(request: Request):
     memory = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
     try:
         init_db(memory)
+        if workspace["data"] is None:
+            from .cloud import user
+            chosen = str(user()["user"].get("chosen_name", "")).strip()[:60]
+            if chosen:
+                with Session(memory) as seed:
+                    setting = seed.get(AppSetting, 1)
+                    setting.name = chosen
+                    seed.add(setting)
+                    seed.commit()
         if workspace["data"] is not None:
             with Session(memory) as seed:
                 import_workspace(seed, workspace["data"])

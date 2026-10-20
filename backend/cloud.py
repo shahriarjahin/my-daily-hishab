@@ -1,4 +1,5 @@
 """Supabase Auth and versioned, account-owned workspaces. No admin key is used."""
+import base64
 import json
 import os
 import time
@@ -58,6 +59,9 @@ def call(method, path, token=None, body=None, extra_headers=None):
                 "user_already_exists": "An account already exists for this email. Use Sign in.",
                 "email_address_invalid": "Enter a valid email address.",
                 "signup_disabled": "New account registration is disabled in this Supabase project.",
+                "mfa_verification_failed": "That verification code was not accepted. Try the current code.",
+                "passkey_disabled": "Passkeys are not enabled for this project.",
+                "webauthn_verification_failed": "Passkey verification failed. Check the app domain and try again.",
                 "weak_password": "Choose a stronger password that meets the project's password requirements.",
             }
             raise HTTPException(401, messages.get(code, "Check your email and password, and confirm your email if required."))
@@ -79,7 +83,7 @@ def read_session(request):
         token = bearer[7:]
         try:
             identity = call("GET", "/auth/v1/user", token)
-            return {"access_token": token, "user": {"id": identity["id"], "email": identity.get("email", "")}}, None
+            return verified_session({"access_token": token}, identity), None
         except HTTPException:
             return None, None
     encrypted = request.cookies.get(COOKIE)
@@ -97,7 +101,7 @@ def read_session(request):
             refreshed = saved
         # Verify identity with Supabase; do not trust a user id supplied by the client.
         user = call("GET", "/auth/v1/user", saved["access_token"])
-        saved["user"] = {"id": user["id"], "email": user.get("email", "")}
+        saved = verified_session(saved, user)
         return saved, refreshed
     except (HTTPException, KeyError):
         return None, None
@@ -155,3 +159,24 @@ def save_ai_configs(config):
     call("POST", "/rest/v1/hishab_ai_configs?on_conflict=user_id", identity["access_token"],
          {"user_id": identity["user"]["id"], "encrypted_config": cipher().encrypt(json.dumps(config).encode()).decode()},
          {"Prefer": "resolution=merge-duplicates,return=minimal"})
+
+
+def verified_session(saved, identity):
+    # The caller first verifies this token with Supabase /user. Claims here are
+    # used only to enforce step-up, never as a substitute for signature verification.
+    saved["user"] = {"id":identity["id"], "email":identity.get("email", ""), "factors":identity.get("factors", []), "name":identity.get("user_metadata",{}).get("name",""), "chosen_name":identity.get("user_metadata",{}).get("hishab_name","")}
+    try:
+        encoded=saved["access_token"].split(".")[1]
+        aal=json.loads(base64.urlsafe_b64decode(encoded+"="*(-len(encoded)%4))).get("aal", "aal1")
+    except (ValueError,IndexError,KeyError):
+        aal="aal1"
+    saved["aal"]=aal
+    saved["mfa_required"]=any(f.get("status")=="verified" for f in identity.get("factors",[])) and aal!="aal2"
+    return saved
+
+
+def require_assurance():
+    identity=user()
+    if identity.get("mfa_required"):
+        raise HTTPException(403,"Complete two-step verification first.")
+    return identity

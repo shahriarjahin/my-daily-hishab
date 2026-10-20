@@ -33,8 +33,9 @@ React · TypeScript · Capacitor · FastAPI · Supabase
 
 - **Made for daily use:** BDT and popular currencies, Bangla/English, light, dark and glass themes.
 - **One account:** Supabase login and account-owned data across web and Android.
-- **Android offline:** encrypted SQLite storage with cloud sync when connected.
+- **Android choice:** use encrypted local storage without an account, or sign in for cloud sync. Offline and cloud workspaces stay separate.
 - **Optional AI:** enable it in Settings for English, Bangla or Banglish entry and editable import previews.
+- **A guided start:** welcome-name setup, a skippable quick-start tutorial, and optional authenticator MFA and passkeys.
 - **A calmer start:** branded loading screen, reduced-motion support and placeholders during longer waits.
 
 ## Get the Android app
@@ -50,7 +51,7 @@ Cloud sync uses the hosted Hishab backend. Optional AI also needs an internet co
 Requires **Python 3.12** and a recent **Node.js 22 LTS** installation.
 
 1. Copy `.env.example` to `.env` and enter your Supabase settings and stable encryption secret.
-2. Run [the database migration](supabase/migrations/001_hishab.sql) in your Supabase SQL Editor.
+2. Run [the database migration](supabase/migrations/001_hishab.sql), followed by [optional MFA policies](supabase/migrations/002_optional_mfa.sql), in your Supabase SQL Editor.
 3. Install dependencies, build the interface and start the server:
 
 ```powershell
@@ -83,10 +84,11 @@ Never publish `.env`, signing keys or financial exports. Keep the encryption sec
 
 ```powershell
 .\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
-.\.venv\Scripts\python.exe -m unittest backend.test_api backend.test_app backend.test_integrations backend.test_finance backend.test_account_updates mobile.test_compatibility -q
+.\.venv\Scripts\python.exe -m unittest backend.test_api backend.test_app backend.test_integrations backend.test_finance backend.test_account_updates backend.test_security mobile.test_compatibility -q
 npm test --prefix frontend
 node --test mobile/test_ledger.cjs
 npm run test:browser --prefix frontend
+npm run test:passkeys --prefix frontend
 ```
 
 Browser checks require Google Chrome. Tests use synthetic records and mocked accounts/providers, not production financial data.

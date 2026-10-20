@@ -167,7 +167,13 @@ function DeviceSettings() {
     </>
   );
 }
-export function SettingsScreen({ edit }: { edit: Editor }) {
+export function SettingsScreen({
+  edit,
+  quickStart,
+}: {
+  edit: Editor;
+  quickStart: () => void;
+}) {
   const {
       state: s,
       cloud,
@@ -293,6 +299,24 @@ export function SettingsScreen({ edit }: { edit: Editor }) {
           >
             CSV
           </Button>
+          {native && cloud?.offline && (
+            <Button
+              secondary
+              onClick={async () => {
+                try {
+                  const local = await device<{ workspace: unknown }>("load");
+                  await exportFile(
+                    "hishab-offline-backup.json",
+                    JSON.stringify(local.workspace, null, 2),
+                  );
+                } catch (e) {
+                  setError((e as Error).message);
+                }
+              }}
+            >
+              {t("Export backup")}
+            </Button>
+          )}
           <p className="form-hint">
             {t("{count} entries", { count: s!.transactions.length })} ·{" "}
             {t("{count} wallets", { count: s!.wallets.length })}
@@ -306,7 +330,8 @@ export function SettingsScreen({ edit }: { edit: Editor }) {
                 "Only allowed for an empty account. Existing records are protected.",
               )}
             </p>
-            <input disabled={busy}
+            <input
+              disabled={busy}
               type="file"
               accept="application/json,.json"
               onChange={(e) => setRestore(e.target.files?.[0] || null)}
@@ -333,159 +358,245 @@ export function SettingsScreen({ edit }: { edit: Editor }) {
             </Button>
           </Card>
         )}
-        {native && <DeviceSettings />}
+        {native && !cloud?.offline && <DeviceSettings />}
         <ErrorMessage message={error} />
       </>
     );
-  if (route === "general") return <><Title>{t("General & Appearance")}</Title>
-      <Card>
-
-        <label className="settings-row">
-          {t("Appearance")}
-          <select disabled={busy}
-            aria-label={t("Appearance")}
-            value={s!.settings.theme}
-            onChange={(e) =>
-              void save({ theme: e.target.value as SettingsType["theme"] })
-            }
-          >
-            {(["light", "dark", "glass", "system"] as const).map((v) => (
-              <option key={v} value={v}>
-                {t(
-                  v === "glass"
-                    ? "Liquid Glass"
-                    : v[0].toUpperCase() + v.slice(1),
-                )}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="settings-row">
-          {t("Language")}
-          <select disabled={busy}
-            aria-label={t("Language")}
-            value={s!.settings.language}
-            onChange={(e) =>
-              void save({ language: e.target.value as "en" | "bn" })
-            }
-          >
-            <option value="en">English</option>
-            <option value="bn">বাংলা</option>
-          </select>
-        </label>
-        <label className="settings-row">
-          {t("Enable AI")}
-          <input disabled={busy}
-            type="checkbox"
-            checked={s!.settings.ai_enabled}
-            onChange={(e) => void save({ ai_enabled: e.target.checked })}
-          />
-        </label>
-        <label className="settings-row">
-          {t("Currency")}
-          <select disabled={busy}
-            aria-label={t("Currency")}
-            value={s!.settings.currency || "BDT"}
-            onChange={(e) => void save({ currency: e.target.value })}
-          >
-            {[
-              "BDT",
-              "USD",
-              "EUR",
-              "GBP",
-              "INR",
-              "PKR",
-              "AED",
-              "SAR",
-              "QAR",
-              "KWD",
-              "CAD",
-              "AUD",
-              "SGD",
-              "MYR",
-              "JPY",
-              "CNY",
-            ].map((code) => (
-              <option key={code} value={code}>
-                {code} ·{" "}
-                {new Intl.DisplayNames(
-                  [s!.settings.language === "bn" ? "bn" : "en"],
-                  { type: "currency" },
-                ).of(code)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <p className="form-hint">
-          {t("Currency changes the display only; amounts are not converted.")}
-        </p>
-        <label className="settings-row">
-          {t("Bottom navigation")}
-          <select disabled={busy}
-            aria-label={t("Bottom navigation")}
-            value={!s!.settings.ai_enabled && s!.settings.bottom_nav === "hub" ? "wallets" : s!.settings.bottom_nav || "wallets"}
-            onChange={(e) =>
-              void save({
-                bottom_nav: e.target.value as SettingsType["bottom_nav"],
-              })
-            }
-          >
-            {[
-              ["wallets", "Wallets"],
-              ["budgets", "Budgets"],
-              ["goals", "Goals"],
-              ["regulars", "Regulars"],
-              ["loans", "Loans"],
-              ["more", "More"],
-              ...(s!.settings.ai_enabled ? [["hub", "Ask"]] : []),
-            ].map(([route, label]) => (
-              <option key={route} value={route}>
-                {t(label)}
-              </option>
-            ))}
-          </select>
-        </label>
-        {s!.settings.ai_enabled && (
+  if (route === "general")
+    return (
+      <>
+        <Title>{t("General & Appearance")}</Title>
+        <Card>
           <label className="settings-row">
-            {t("Review before saving")}
-            <input disabled={busy}
-              type="checkbox"
-              checked={s!.settings.review_before_saving}
+            {t("Appearance")}
+            <select
+              disabled={busy}
+              aria-label={t("Appearance")}
+              value={s!.settings.theme}
               onChange={(e) =>
-                void save({ review_before_saving: e.target.checked })
+                void save({ theme: e.target.value as SettingsType["theme"] })
               }
+            >
+              {(["light", "dark", "glass", "system"] as const).map((v) => (
+                <option key={v} value={v}>
+                  {t(
+                    v === "glass"
+                      ? "Liquid Glass"
+                      : v[0].toUpperCase() + v.slice(1),
+                  )}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="settings-row">
+            {t("Language")}
+            <select
+              disabled={busy}
+              aria-label={t("Language")}
+              value={s!.settings.language}
+              onChange={(e) =>
+                void save({ language: e.target.value as "en" | "bn" })
+              }
+            >
+              <option value="en">English</option>
+              <option value="bn">বাংলা</option>
+            </select>
+          </label>
+          <label className="settings-row">
+            {t("Enable AI")}
+            <input
+              disabled={busy || cloud?.offline}
+              type="checkbox"
+              checked={s!.settings.ai_enabled}
+              onChange={(e) => void save({ ai_enabled: e.target.checked })}
             />
           </label>
-        )}
-      </Card>
-<ErrorMessage message={error}/></>;
+          <label className="settings-row">
+            {t("Currency")}
+            <select
+              disabled={busy}
+              aria-label={t("Currency")}
+              value={s!.settings.currency || "BDT"}
+              onChange={(e) => void save({ currency: e.target.value })}
+            >
+              {[
+                "BDT",
+                "USD",
+                "EUR",
+                "GBP",
+                "INR",
+                "PKR",
+                "AED",
+                "SAR",
+                "QAR",
+                "KWD",
+                "CAD",
+                "AUD",
+                "SGD",
+                "MYR",
+                "JPY",
+                "CNY",
+              ].map((code) => (
+                <option key={code} value={code}>
+                  {code} ·{" "}
+                  {new Intl.DisplayNames(
+                    [s!.settings.language === "bn" ? "bn" : "en"],
+                    { type: "currency" },
+                  ).of(code)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className="form-hint">
+            {t("Currency changes the display only; amounts are not converted.")}
+          </p>
+          <label className="settings-row">
+            {t("Bottom navigation")}
+            <select
+              disabled={busy}
+              aria-label={t("Bottom navigation")}
+              value={
+                !s!.settings.ai_enabled && s!.settings.bottom_nav === "hub"
+                  ? "wallets"
+                  : s!.settings.bottom_nav || "wallets"
+              }
+              onChange={(e) =>
+                void save({
+                  bottom_nav: e.target.value as SettingsType["bottom_nav"],
+                })
+              }
+            >
+              {[
+                ["wallets", "Wallets"],
+                ["budgets", "Budgets"],
+                ["goals", "Goals"],
+                ["regulars", "Regulars"],
+                ["loans", "Loans"],
+                ["more", "More"],
+                ...(s!.settings.ai_enabled ? [["hub", "Ask"]] : []),
+              ].map(([route, label]) => (
+                <option key={route} value={route}>
+                  {t(label)}
+                </option>
+              ))}
+            </select>
+          </label>
+          {s!.settings.ai_enabled && (
+            <label className="settings-row">
+              {t("Review before saving")}
+              <input
+                disabled={busy}
+                type="checkbox"
+                checked={s!.settings.review_before_saving}
+                onChange={(e) =>
+                  void save({ review_before_saving: e.target.checked })
+                }
+              />
+            </label>
+          )}
+        </Card>
+        <ErrorMessage message={error} />
+      </>
+    );
   return (
     <>
       <Title>{t("Settings")}</Title>
       <Card className="account-card">
-        <form className="account-identity" onSubmit={e=>{e.preventDefault();if(editingName)void save({name}).then(saved=>{if(saved)setEditingName(false);});}}>
-          <span className="account-avatar" aria-hidden="true">{(s!.settings.name.trim() || cloud?.email || "H").slice(0,1).toLocaleUpperCase()}</span>
+        <form
+          className="account-identity"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (editingName)
+              void save({ name }).then((saved) => {
+                if (saved) setEditingName(false);
+              });
+          }}
+        >
+          <span className="account-avatar" aria-hidden="true">
+            {(s!.settings.name.trim() || cloud?.email || "H")
+              .slice(0, 1)
+              .toLocaleUpperCase()}
+          </span>
           <div className="account-name-details">
-            {editingName ? <input className="account-name-inline" aria-label={t("Name")} autoFocus disabled={busy} maxLength={60} value={name} onChange={e=>setName(e.target.value)} onKeyDown={e=>{if(e.key === "Escape"){e.preventDefault();setName(s!.settings.name);setEditingName(false);}}}/> : <h2>{s!.settings.name || t("Your account")}</h2>}
-            <p className="muted">{cloud?.email}</p>
+            {editingName ? (
+              <input
+                className="account-name-inline"
+                aria-label={t("Name")}
+                autoFocus
+                disabled={busy}
+                maxLength={60}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") {
+                    e.preventDefault();
+                    setName(s!.settings.name);
+                    setEditingName(false);
+                  }
+                }}
+              />
+            ) : (
+              <h2>{s!.settings.name || t("Your account")}</h2>
+            )}
+            <p className="muted">
+              {cloud?.offline ? t("Offline · this phone only") : cloud?.email}
+            </p>
           </div>
-          {editingName ? <button key="save-name" type="submit" disabled={busy} className="account-name-edit text-button" aria-label={t("Save")}><Icon name="check"/></button> : <button key="edit-name" type="button" className="account-name-edit text-button" aria-label={t("Edit name")} onClick={()=>{setName(s!.settings.name);setEditingName(true);}}><Icon name="edit"/></button>}
+          {editingName ? (
+            <button
+              key="save-name"
+              type="submit"
+              disabled={busy}
+              className="account-name-edit text-button"
+              aria-label={t("Save")}
+            >
+              <Icon name="check" />
+            </button>
+          ) : (
+            <button
+              key="edit-name"
+              type="button"
+              className="account-name-edit text-button"
+              aria-label={t("Edit name")}
+              onClick={() => {
+                setName(s!.settings.name);
+                setEditingName(true);
+              }}
+            >
+              <Icon name="edit" />
+            </button>
+          )}
         </form>
         <div className="account-buttons">
-          <Button secondary onClick={() => navigate("password")}>{t("Change password")}</Button>
-          <button type="button" className="secondary-button account-signout" onClick={() => setConfirmLogout(true)}>{t("Sign out")}</button>
+          {!cloud?.offline && (
+            <Button secondary onClick={() => navigate("password")}>
+              {t("Change password")}
+            </Button>
+          )}
+          <button
+            type="button"
+            className="secondary-button account-signout"
+            onClick={() => setConfirmLogout(true)}
+          >
+            {t(cloud?.offline ? "Switch mode" : "Sign out")}
+          </button>
         </div>
       </Card>
       <div className="destination-list section-gap">
         {(
           [
             ["general", "General & Appearance", "settings"],
+            ["security", "Account security", "lock"],
             ["categories", "Categories", "shopping"],
             ["connections", "AI connections", "spark"],
             ["data", "Data & app", "download"],
           ] as const
         )
-          .filter(([r]) => s!.settings.ai_enabled || r !== "connections")
+          .filter(
+            ([r]) =>
+              (s!.settings.ai_enabled || r !== "connections") &&
+              (!cloud?.offline || r !== "security"),
+          )
           .map(([r, label, i]) => (
             <button
               className="destination-card"
@@ -498,7 +609,12 @@ export function SettingsScreen({ edit }: { edit: Editor }) {
             </button>
           ))}
       </div>
-      {native && <DeviceSettings />}
+      {native && !cloud?.offline && <DeviceSettings />}
+      <button className="destination-card section-gap" onClick={quickStart}>
+        <Icon name="help" />
+        <strong>{t("Quick start")}</strong>
+        <Icon name="arrow" />
+      </button>
       <Card className="developer-credit section-gap">
         <small>{t("Developed by")}</small>
         <div className="developer-person">
@@ -530,7 +646,9 @@ export function SettingsScreen({ edit }: { edit: Editor }) {
         <Modal title="Sign out" close={() => setConfirmLogout(false)}>
           <p>
             {t(
-              "Sync pending changes or export a backup before removing this account’s session.",
+              cloud?.offline
+                ? "Your offline records will stay on this phone."
+                : "Sync pending changes or export a backup before removing this account’s session.",
             )}
           </p>
           <div className="toolbar">

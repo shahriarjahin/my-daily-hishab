@@ -1,4 +1,6 @@
 const paths: Record<string, string> = {
+  lock: "M5 10h14v11H5zM8 10V6a4 4 0 0 1 8 0v4m-4 4v3",
+  help: "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20M9 9a3 3 0 1 1 4 3v3m0 3h.01",
   home: "M3 10 12 3l9 7v10H3z M9 20v-7h6v7",
   history: "M5 3h14v18H5z M8 8h8M8 12h8M8 16h5",
   plus: "M12 5v14M5 12h14",

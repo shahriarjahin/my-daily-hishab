@@ -8,6 +8,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from .auth import router as auth_router
+from .security import router as security_router
 from .api import router
 from .integrations import router as integration_router
 from .finance import router as finance_router
@@ -24,6 +25,7 @@ async def lifespan(app):
 app = FastAPI(lifespan=lifespan)
 app.include_router(router)
 app.include_router(auth_router)
+app.include_router(security_router)
 app.include_router(integration_router)
 app.include_router(finance_router)
 app.mount("/static", StaticFiles(directory=str(_HERE / "static")), name="static")
@@ -49,6 +51,8 @@ async def account_context(request, call_next):
         public = request.url.path.startswith("/api/auth/") or request.url.path in ("/api/cloud/status", "/api/cloud/setup.sql", "/api/health")
         if cloud.cloud_mode() and not identity and not public:
             return JSONResponse({"detail": "Sign in to access your cloud workspace."}, status_code=401)
+        if identity and identity.get("mfa_required") and not public:
+            return JSONResponse({"detail":"Complete two-step verification first."},status_code=403)
         response = await call_next(request)
         if identity and identity.get("workspace_revision") is not None:
             response.headers["X-Workspace-Revision"] = str(identity["workspace_revision"])
@@ -78,3 +82,8 @@ def dashboard(request: Request):
 @app.get("/analyze", response_class=HTMLResponse)
 def analyze_page(request: Request):
     return dashboard(request)
+
+
+@app.get("/.well-known/assetlinks.json")
+def android_association():
+    return FileResponse(_HERE / "static" / "assetlinks.json",media_type="application/json")

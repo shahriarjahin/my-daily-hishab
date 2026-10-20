@@ -1,7 +1,7 @@
 {
   "name": "my-daily-hishab",
   "private": true,
-  "version": "2.1.0",
+  "version": "2.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
@@ -9,7 +9,8 @@
     "test": "vitest run",
     "cap:sync": "cap sync android",
     "test:browser": "node tests/browser.cjs",
-    "format": "prettier --write src"
+    "format": "prettier --write src",
+    "test:passkeys": "node tests/passkeys.cjs"
   },
   "dependencies": {
     "@capacitor/android": "8.5.3",

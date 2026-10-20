@@ -13,6 +13,13 @@ import { Advisor, Importer, AutoPlan } from "./screens/AI";
 import { SettingsScreen } from "./screens/Settings";
 import type { Route } from "./types";
 import { PasswordForm } from "./components/PasswordForm";
+import {
+  AndroidWelcome,
+  WelcomeName,
+  QuickStart,
+} from "./components/Onboarding";
+import { Security, MFAVerification } from "./screens/Security";
+import { usePasskey } from "./passkeys";
 import { LoadingScreen } from "./components/LoadingScreen";
 function Auth() {
   const { refresh, t } = useStore(),
@@ -23,6 +30,7 @@ function Auth() {
     ),
     [email, setEmail] = useState(""),
     [password, setPassword] = useState(""),
+    [signupName, setSignupName] = useState(""),
     [working, setWorking] = useState(false),
     [error, setError] = useState(
       new URLSearchParams(location.search).has("auth_error")
@@ -93,7 +101,12 @@ function Auth() {
             onSubmit={async (e) => {
               e.preventDefault();
               if (native && mode === "forgot-password") {
-                try { await device("forgot-password"); } catch(e) {setError((e as Error).message);} return;
+                try {
+                  await device("forgot-password");
+                } catch (e) {
+                  setError((e as Error).message);
+                }
+                return;
               }
               setWorking(true);
               setError("");
@@ -101,7 +114,19 @@ function Auth() {
                 const result = await api<{
                   signed_in: boolean;
                   message?: string;
-                }>("/auth/" + mode, "POST", mode === "forgot-password" ? { email } : { email, password });
+                }>(
+                  "/auth/" + mode,
+                  "POST",
+                  mode === "forgot-password"
+                    ? { email }
+                    : {
+                        email,
+                        password,
+                        ...(mode === "signup"
+                          ? { name: signupName.trim() }
+                          : {}),
+                      },
+                );
                 setPassword("");
                 if (result.signed_in) await refresh();
                 else
@@ -116,6 +141,19 @@ function Auth() {
               }
             }}
           >
+            {mode === "signup" && (
+              <label className="form-field">
+                {t("What should we call you?")}
+                <input
+                  name="name"
+                  required
+                  autoComplete="given-name"
+                  maxLength={60}
+                  value={signupName}
+                  onChange={(e) => setSignupName(e.target.value)}
+                />
+              </label>
+            )}
             <label className="form-field">
               {t("Email")}
               <input
@@ -184,6 +222,25 @@ function Auth() {
               )}
             </a>
           ))}
+          <button
+            type="button"
+            className="secondary-button oauth-button"
+            disabled={working}
+            onClick={async () => {
+              setWorking(true);
+              setError("");
+              try {
+                await usePasskey();
+                await refresh();
+              } catch (e) {
+                setError((e as Error).message);
+              } finally {
+                setWorking(false);
+              }
+            }}
+          >
+            {t("Sign in with a passkey")}
+          </button>
           <p className="form-hint">
             {t(
               native
@@ -216,9 +273,15 @@ export default function App() {
       null,
     ),
     [deleteError, setDeleteError] = useState(""),
-    [auto, setAuto] = useState(false);
+    [auto, setAuto] = useState(false),
+    [cloudChoice, setCloudChoice] = useState(false),
+    [tutorial, setTutorial] = useState(false);
   useEffect(() => {
     const back = () => {
+      if (document.querySelector(".quickstart-slide")) {
+        window.dispatchEvent(new Event("hishab-tutorial-dismiss"));
+        return;
+      }
       if (deletion) setDeletion(null);
       else if (auto) setAuto(false);
       else if (form) setForm(null);
@@ -244,7 +307,23 @@ export default function App() {
         </Card>
       </main>
     );
-  if (!cloud?.signed_in) return <Auth />;
+  if (!cloud?.signed_in)
+    return native && !cloudChoice ? (
+      <AndroidWelcome cloud={() => setCloudChoice(true)} />
+    ) : (
+      <>
+        <Auth />
+        {native && (
+          <button
+            className="welcome-back text-button"
+            onClick={() => setCloudChoice(false)}
+          >
+            {t("Back")}
+          </button>
+        )}
+      </>
+    );
+  if (cloud.mfa_required) return <MFAVerification />;
   if (cloud.setup_required)
     return (
       <main>
@@ -257,6 +336,14 @@ export default function App() {
       </main>
     );
   if (!s) return <main>{t("Loading your account…")}</main>;
+  if (!s.settings.name.trim()) return <WelcomeName />;
+  const showTutorial =
+    tutorial ||
+    (!s.settings.tutorial_seen &&
+      !s.transactions.length &&
+      !s.movements.length &&
+      !s.goals.length &&
+      !s.loans.length);
   const forms = formFactory(s),
     links: [Route, string, string][] = [
       ["home", "Home", "home"],
@@ -335,11 +422,16 @@ export default function App() {
     case "categories":
       content = <Wealth edit={setForm} remove={remove} />;
       break;
+    case "security":
+      content = <Security />;
+      break;
     case "general":
     case "settings":
     case "connections":
     case "data":
-      content = <SettingsScreen edit={setForm} />;
+      content = (
+        <SettingsScreen edit={setForm} quickStart={() => setTutorial(true)} />
+      );
       break;
     default:
       content = (
@@ -466,6 +558,7 @@ export default function App() {
           ),
         )}
       </nav>
+      {showTutorial && <QuickStart close={() => setTutorial(false)} />}
       {sheet && (
         <EntrySheet
           close={() => setSheet(false)}
