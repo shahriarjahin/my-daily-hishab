@@ -1,6 +1,33 @@
 @import "../../backend/static/app.css";
 @import "../../backend/static/finance.css";
 @import "../../backend/static/modern.css";
+.modern-heading .page-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.page-title h1 {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.page-back {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  color: var(--text);
+  background: var(--panel);
+  cursor: pointer;
+}
+.page-back svg {
+  width: 20px;
+  height: 20px;
+}
 .money-sheet .primary-button {
   background: var(--selected);
   color: var(--selected-ink);

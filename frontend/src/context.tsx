@@ -8,129 +8,8 @@ import {
 } from "react";
 import { api, status, native, device, ApiError, resetRevision } from "./api";
 import type { WorkspaceState, CloudStatus, Route, Provider } from "./types";
-import bangla from "./locales/bn.json";
+import { translate, type TranslationValues } from "./i18n";
 import { SystemBars, SystemBarsStyle } from "@capacitor/core";
-const translations: Record<string, string> = {
-  Home: "হোম",
-  Activity: "লেনদেন",
-  Insights: "পরিসংখ্যান",
-  Ask: "জিজ্ঞাসা",
-  "Ask Hishab": "হিসাবকে জিজ্ঞাসা",
-  Settings: "সেটিংস",
-  Budgets: "বাজেট",
-  Wallets: "ওয়ালেট",
-  Goals: "লক্ষ্য",
-  Loans: "ঋণ",
-  Regulars: "নিয়মিত খরচ",
-  Import: "আমদানি",
-  More: "আরও",
-  Categories: "বিভাগ",
-  "AI connections": "এআই সংযোগ",
-  "Data & app": "তথ্য ও অ্যাপ",
-  Income: "আয়",
-  Expense: "খরচ",
-  Expenses: "খরচ",
-  Transfer: "স্থানান্তর",
-  Transfers: "স্থানান্তর",
-  Save: "সংরক্ষণ",
-  Cancel: "বাতিল",
-  Delete: "মুছুন",
-  Edit: "সম্পাদনা",
-  "Add entry": "এন্ট্রি যোগ",
-  "Add wallet": "ওয়ালেট যোগ",
-  Amount: "পরিমাণ",
-  Category: "বিভাগ",
-  Date: "তারিখ",
-  Note: "বিবরণ",
-  Account: "অ্যাকাউন্ট",
-  Wallet: "ওয়ালেট",
-  Description: "বিবরণ",
-  Recent: "সাম্প্রতিক",
-  "See all": "সব দেখুন",
-  "View all": "সব দেখুন",
-  All: "সব",
-  Week: "সপ্তাহ",
-  Month: "মাস",
-  Year: "বছর",
-  "Cash flow": "নিট লেনদেন",
-  Spending: "খরচ",
-  "Quick entry": "দ্রুত এন্ট্রি",
-  "Sign in": "সাইন ইন",
-  "Create account": "অ্যাকাউন্ট তৈরি",
-  "Sign out": "সাইন আউট",
-  Email: "ইমেইল",
-  Password: "পাসওয়ার্ড",
-  Appearance: "চেহারা",
-  Language: "ভাষা",
-  Light: "হালকা",
-  Dark: "গাঢ়",
-  System: "সিস্টেম",
-  "Review before saving": "সংরক্ষণের আগে যাচাই",
-  "Monthly plan": "মাসিক পরিকল্পনা",
-  "Auto-plan": "স্বয়ংক্রিয় পরিকল্পনা",
-  "Category budget": "বিভাগের বাজেট",
-  "No entries yet": "এখনও কোনো এন্ট্রি নেই",
-  "Available balance": "ব্যবহারযোগ্য টাকা",
-  "Net cash flow": "নিট লেনদেন",
-  Spent: "খরচ",
-  Remaining: "অবশিষ্ট",
-  "Scan receipt": "রসিদ স্ক্যান",
-  "Type with AI": "এআই দিয়ে লিখুন",
-  "Save expense": "খরচ সংরক্ষণ",
-  "Save income": "আয় সংরক্ষণ",
-  "Search transactions": "লেনদেন খুঁজুন",
-  "All time": "সব সময়",
-  Today: "আজ",
-  "This week": "এই সপ্তাহ",
-  "This month": "এই মাস",
-  "This year": "এই বছর",
-  "Sync now": "এখন সিঙ্ক করুন",
-  "Check for updates": "আপডেট খুঁজুন",
-  "App updates": "অ্যাপ আপডেট",
-  "Check automatically": "স্বয়ংক্রিয়ভাবে খুঁজুন",
-  Export: "এক্সপোর্ট",
-  Filters: "ফিল্টার",
-  Clear: "মুছুন",
-  "No records": "কোনো রেকর্ড নেই",
-  Saved: "সংরক্ষিত",
-  "Connection failed": "সংযোগ ব্যর্থ",
-  Back: "পিছনে",
-  Add: "যোগ করুন",
-  Needs: "প্রয়োজন",
-  Wants: "ইচ্ছা",
-  Savings: "সঞ্চয়",
-  "Monthly budget": "মাসিক বাজেট",
-  "Planned income": "পরিকল্পিত আয়",
-  "Savings target": "সঞ্চয়ের লক্ষ্য",
-  "Opening balance": "শুরুর টাকা",
-  Name: "নাম",
-  "Monthly limit": "মাসিক সীমা",
-  "Daily limit": "দৈনিক সীমা",
-  Unit: "একক",
-  Target: "লক্ষ্য",
-  "Due date": "শেষ তারিখ",
-  Party: "ব্যক্তি",
-  Borrowed: "ধার নেওয়া",
-  Lent: "ধার দেওয়া",
-  Repay: "পরিশোধ",
-  "Existing loan": "আগের ঋণ",
-  "New loan": "নতুন ঋণ",
-  "Reserve savings": "সঞ্চয় রাখুন",
-  Release: "ছাড়ুন",
-  "Edit plan": "পরিকল্পনা বদলান",
-  "Export backup": "ব্যাকআপ নিন",
-  "Recovery copies": "পুনরুদ্ধার কপি",
-  "AI server": "এআই সার্ভার",
-  "Automatic fallback": "স্বয়ংক্রিয় বিকল্প",
-  Connect: "সংযোগ করুন",
-  Configure: "সাজান",
-  "No AI providers connected": "এআই সংযোগ নেই",
-  "Ask about your spending, budgets, and goals.":
-    "খরচ, বাজেট এবং লক্ষ্য নিয়ে জিজ্ঞাসা করুন।",
-  "What do you want to know about your money?":
-    "আপনার টাকা সম্পর্কে কী জানতে চান?",
-  "Last 12 months": "গত ১২ মাস",
-};
 const routes = new Set<Route>([
   "home",
   "history",
@@ -153,6 +32,7 @@ const currentRoute = () =>
     ? (location.hash.slice(1) as Route)
     : "home";
 interface Context {
+  language: "en" | "bn";
   state: WorkspaceState | null;
   cloud: CloudStatus | null;
   providers: Provider[];
@@ -163,8 +43,9 @@ interface Context {
   refresh: () => Promise<void>;
   mutate: (path: string, method: string, body?: unknown) => Promise<unknown>;
   navigate: (route: Route) => void;
+  goBack: () => void;
   notify: (message: string) => void;
-  t: (text: string) => string;
+  t: (text: string, values?: TranslationValues) => string;
   money: (n: number) => string;
 }
 const Store = createContext<Context | null>(null);
@@ -177,7 +58,28 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [toast, setToast] = useState("");
+  const [preferredLanguage, setPreferredLanguage] = useState<"en" | "bn">(
+    () => {
+      try {
+        return localStorage.getItem("hishab-language") === "bn" ? "bn" : "en";
+      } catch {
+        return "en";
+      }
+    },
+  );
+  const language = state?.settings.language || preferredLanguage;
+  useEffect(() => {
+    if (!state) return;
+    setPreferredLanguage(state.settings.language);
+    try {
+      localStorage.setItem("hishab-language", state.settings.language);
+    } catch {}
+  }, [state?.settings.language]);
   const generation = useRef(0),
+    navigation = useRef({
+      key: Date.now().toString(36) + Math.random().toString(36).slice(2),
+      index: 0,
+    }),
     saving = useRef(false),
     timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const refresh = async () => {
@@ -234,7 +136,29 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   };
   useEffect(() => {
     void refresh();
-    const hash = () => setRoute(currentRoute());
+    // Mark only entries visited in this app session. A cold deep link returns
+    // Home instead of sending the user to an unrelated website.
+    history.replaceState(
+      { ...history.state, hishabNavigation: navigation.current },
+      "",
+    );
+    const hash = () => {
+      const previous = history.state?.hishabNavigation;
+      if (previous?.key === navigation.current.key) {
+        navigation.current = { ...previous };
+      } else {
+        navigation.current = {
+          ...navigation.current,
+          index: navigation.current.index + 1,
+        };
+        history.replaceState(
+          { ...history.state, hishabNavigation: navigation.current },
+          "",
+        );
+      }
+      setRoute(currentRoute());
+      window.scrollTo(0, 0);
+    };
     window.addEventListener("hashchange", hash);
     const poll = () => {
       if (
@@ -273,15 +197,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         }).catch(() => {});
     };
     apply();
-    document.documentElement.lang = state?.settings.language || "en";
+    document.documentElement.lang = language;
     const media = matchMedia("(prefers-color-scheme:dark)");
     media.addEventListener("change", apply);
     return () => media.removeEventListener("change", apply);
-  }, [state?.settings.theme, state?.settings.language]);
-  const language = state?.settings.language || "en";
+  }, [state?.settings.theme, language]);
   return (
     <Store.Provider
       value={{
+        language,
         state,
         cloud,
         providers,
@@ -291,17 +215,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         busy,
         refresh,
         mutate,
+        goBack: () => {
+          if (navigation.current.index > 0) history.back();
+          else location.hash = "home";
+        },
         navigate: (r) => {
           location.hash = r;
           window.scrollTo(0, 0);
         },
         notify,
-        t: (text) =>
-          language === "bn"
-            ? translations[text] ||
-              (bangla as Record<string, string>)[text] ||
-              text
-            : text,
+        t: (text, values) => translate(text, language, values),
         money: (n) =>
           "৳" +
           new Intl.NumberFormat(language === "bn" ? "bn-BD" : "en-IN", {
@@ -312,7 +235,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       {children}
       {toast && (
         <div className="toast" role="status">
-          {toast}
+          {translate(toast, language)}
         </div>
       )}
     </Store.Provider>

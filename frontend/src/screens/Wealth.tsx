@@ -38,7 +38,7 @@ export function Wealth({
               {t("Loans")}
             </Button>
             <Button secondary onClick={() => navigate("parser")}>
-              AI balances
+              {t("AI balances")}
             </Button>
           </div>
           <div className="record-grid">
@@ -57,7 +57,7 @@ export function Wealth({
                   <h2>{w.name}</h2>
                   <button
                     className="text-button"
-                    aria-label={"Edit " + w.name}
+                    aria-label={t("Edit {name}", { name: w.name })}
                     onClick={() => edit(forms.wallet(w))}
                   >
                     <Icon name="edit" />
@@ -197,7 +197,7 @@ export function Wealth({
                   <strong className="insight-total">{money(spent)}</strong>
                   <p className="muted">
                     {entries.reduce((n, x) => n + (x.quantity || 0), 0)}{" "}
-                    {r.unit} · {t("Today")}
+                    {t(r.unit)} · {t("Today")}
                   </p>
                   <Progress used={spent} limit={r.daily_limit} label={r.name} />
                   <div className="toolbar">
@@ -238,8 +238,8 @@ export function Wealth({
                       onClick={() => edit(forms.category(c))}
                     >
                       <Icon name={c.icon} />
-                      {c.name}
-                      {c.archived ? " · Archived" : ""}
+                      {t(c.name)}
+                      {c.archived ? " · " + t("Archived") : ""}
                     </button>
                   ))}
               </div>

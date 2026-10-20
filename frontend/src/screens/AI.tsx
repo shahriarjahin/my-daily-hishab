@@ -17,7 +17,7 @@ export function Advisor() {
     [error, setError] = useState("");
   return (
     <>
-      <Title>Ask Hishab</Title>
+      <Title>{t("Ask Hishab")}</Title>
       {!s!.advisor_messages.length && (
         <div className="ask-intro">
           <span className="ask-icon">
@@ -93,7 +93,9 @@ export function Advisor() {
           </Button>
         </form>
         <p className="form-hint">
-          Your account summary and chat are sent to connected AI providers.
+          {t(
+            "Your account summary and chat are sent to connected AI providers.",
+          )}
         </p>
       </Card>
     </>
@@ -135,7 +137,7 @@ export function Importer() {
           transactions: output.transactions,
         });
         setText("");
-        notify(t("Saved"));
+        notify("Saved");
       } else setResult(output);
     } catch (e) {
       setError((e as Error).message);
@@ -145,7 +147,7 @@ export function Importer() {
   };
   return (
     <>
-      <Title>Import</Title>
+      <Title>{t("Import")}</Title>
       <Card>
         <form
           onSubmit={(e) => {
@@ -154,12 +156,12 @@ export function Importer() {
           }}
         >
           <label className="form-field">
-            English, বাংলা or Banglish
+            {t("English, বাংলা or Banglish")}
             <textarea
               value={text}
               maxLength={10000}
               onChange={(e) => setText(e.target.value)}
-              placeholder="70 tk cash paisi"
+              placeholder={t("70 tk cash paisi")}
             />
           </label>
           <div className="form-grid section-gap">
@@ -177,11 +179,11 @@ export function Importer() {
               </select>
             </label>
             <label className="form-field">
-              Type
+              {t("Type")}
               <select value={mode} onChange={(e) => setMode(e.target.value)}>
-                <option value="auto">Auto</option>
-                <option value="transactions">Income / expense</option>
-                <option value="wallets">Current wallet balances</option>
+                <option value="auto">{t("Auto")}</option>
+                <option value="transactions">{t("Income / expense")}</option>
+                <option value="wallets">{t("Current wallet balances")}</option>
               </select>
             </label>
             <label className="form-field wide">
@@ -195,12 +197,12 @@ export function Importer() {
           </div>
           <ErrorMessage message={error} />
           <Button type="submit" disabled={working}>
-            {working ? "Working…" : t("Import")}
+            {working ? t("Working…") : t("Import")}
           </Button>
           <p className="form-hint">
             {t("Review before saving")}:{" "}
-            {s!.settings.review_before_saving ? "On" : "Off"} · AI providers
-            receive your text or receipt.
+            {t(s!.settings.review_before_saving ? "On" : "Off")} ·{" "}
+            {t("AI providers receive your text or receipt.")}
           </p>
         </form>
       </Card>
@@ -241,7 +243,9 @@ export function Importer() {
                 />
               </label>
               <p className="form-hint wide">
-                Current balances are not income. Existing transactions are kept.
+                {t(
+                  "Current balances are not income. Existing transactions are kept.",
+                )}
               </p>
             </div>
           ))}
@@ -282,7 +286,7 @@ export function Importer() {
                   />
                 </label>
                 <label className="form-field">
-                  Type
+                  {t("Type")}
                   <select
                     value={entry.type}
                     onChange={(e) =>
@@ -317,7 +321,9 @@ export function Importer() {
                     }
                   >
                     {s!.categories.map((c) => (
-                      <option key={c}>{c}</option>
+                      <option key={c} value={c}>
+                        {t(c)}
+                      </option>
                     ))}
                   </select>
                 </label>
@@ -376,7 +382,7 @@ export function Importer() {
                   });
                 setResult(null);
                 setText("");
-                notify(t("Saved"));
+                notify("Saved");
               } catch (e) {
                 setError((e as Error).message);
               } finally {
@@ -433,15 +439,17 @@ export function AutoPlan({ close }: { close: () => void }) {
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               maxLength={2000}
-              placeholder="Monthly income 30000, spending cap 24000, save 6000"
+              placeholder={t(
+                "Monthly income 30000, spending cap 24000, save 6000",
+              )}
             />
           </label>
         ) : (
           <>
             <p>{proposal.summary}</p>
             <p className="form-hint">
-              {proposal.provider} · Review before applying. This replaces
-              category limits.
+              {proposal.provider} ·{" "}
+              {t("Review before applying. This replaces category limits.")}
             </p>
             <div className="form-grid">
               {(
@@ -455,7 +463,7 @@ export function AutoPlan({ close }: { close: () => void }) {
                 ] as const
               ).map((key) => (
                 <label className="form-field" key={key}>
-                  {key.replaceAll("_", " ")}
+                  {t(key.replaceAll("_", " "))}
                   <input
                     type="number"
                     min="0"
@@ -502,7 +510,7 @@ export function AutoPlan({ close }: { close: () => void }) {
         )}
         <ErrorMessage message={error} />
         <Button type="submit" disabled={working}>
-          {working ? "Working…" : proposal ? t("Save") : t("Auto-plan")}
+          {working ? t("Working…") : proposal ? t("Save") : t("Auto-plan")}
         </Button>
       </form>
     </Modal>

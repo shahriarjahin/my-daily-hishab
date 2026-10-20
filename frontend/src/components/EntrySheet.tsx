@@ -70,7 +70,7 @@ export function EntrySheet({
                 },
               ],
             });
-            notify(t("Saved"));
+            notify("Saved");
             close();
           } catch (e) {
             setError((e as Error).message);
@@ -81,7 +81,7 @@ export function EntrySheet({
           <span>৳</span>
           <input
             name="amount"
-            aria-label="Amount in taka"
+            aria-label={t("Amount in taka")}
             inputMode="decimal"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
@@ -113,12 +113,14 @@ export function EntrySheet({
           ))}
           {categories.length > 6 && (
             <select
-              aria-label="All categories"
+              aria-label={t("All categories")}
               value={chosen}
               onChange={(e) => setCategory(e.target.value)}
             >
               {categories.map((c) => (
-                <option key={c.id}>{c.name}</option>
+                <option key={c.id} value={c.name}>
+                  {t(c.name)}
+                </option>
               ))}
             </select>
           )}
@@ -165,7 +167,7 @@ export function EntrySheet({
               <button
                 type="button"
                 key={v}
-                aria-label={v === "⌫" ? "Delete digit" : v}
+                aria-label={v === "⌫" ? t("Delete digit") : v}
                 onClick={() =>
                   setAmount((old) =>
                     v === "⌫"
@@ -195,7 +197,7 @@ export function EntrySheet({
               type="number"
               step="0.01"
               min="0.01"
-              aria-label="Quantity"
+              aria-label={t("Quantity")}
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
             />

@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { useStore } from "../context";
+import { translateError } from "../i18n";
 import { Icon } from "./Icon";
 export function Title({
   children,
@@ -8,10 +9,23 @@ export function Title({
   children: ReactNode;
   action?: ReactNode;
 }) {
-  const { navigate, t } = useStore();
+  const { navigate, goBack, route, t } = useStore();
   return (
     <div className="modern-heading">
-      <h1>{typeof children === "string" ? t(children) : children}</h1>
+      <div className="page-title">
+        {!["home", "history", "insights", "hub"].includes(route) && (
+          <button
+            type="button"
+            className="page-back"
+            onClick={goBack}
+            aria-label={t("Back")}
+            title={t("Back")}
+          >
+            <Icon name="back" />
+          </button>
+        )}
+        <h1>{typeof children === "string" ? t(children) : children}</h1>
+      </div>
       <div>
         {action}
         <button
@@ -135,9 +149,10 @@ export function Modal({
   );
 }
 export function ErrorMessage({ message }: { message: string }) {
+  const { language } = useStore();
   return message ? (
     <p className="form-error" role="alert">
-      {message}
+      {translateError(message, language)}
     </p>
   ) : null;
 }

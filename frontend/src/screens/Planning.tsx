@@ -17,7 +17,7 @@ export function Budgets({
     forms = formFactory(s!);
   return (
     <>
-      <Title>Budgets</Title>
+      <Title>{t("Budgets")}</Title>
       <div className="section-nav">
         {(["budgets", "goals", "regulars"] as const).map((r, i) => (
           <button
@@ -41,13 +41,15 @@ export function Budgets({
         </div>
         <Progress used={p.spent} limit={p.budget} label={t("Monthly budget")} />
         <p className="muted">
-          {p.days_left} days · {money(p.daily_limit)} / day
+          {t("{count} days", { count: p.days_left })} · {money(p.daily_limit)}{" "}
+          {t("/ day")}
         </p>
       </Card>
       {s!.budgets.some((b) => b.spent > b.amount) && (
         <div className="budget-warning">
-          {s!.budgets.filter((b) => b.spent > b.amount).length} categories over
-          budget
+          {t("{count} categories over budget", {
+            count: s!.budgets.filter((b) => b.spent > b.amount).length,
+          })}
         </div>
       )}
       <div className="modern-budget-list">
@@ -179,7 +181,7 @@ export function Insights() {
     p = s!.planning;
   return (
     <>
-      <Title>Insights</Title>
+      <Title>{t("Insights")}</Title>
       <div className="modern-segment insights-switch">
         {[
           ["expense", "Spending"],
@@ -208,7 +210,11 @@ export function Insights() {
             · {t("This month")}
           </small>
           <strong className="insight-total">{money(value)}</strong>
-          <div className="modern-bars" role="img" aria-label="Monthly totals">
+          <div
+            className="modern-bars"
+            role="img"
+            aria-label={t("Monthly totals")}
+          >
             {groups.map((g, i) => (
               <div key={g.key}>
                 <span
@@ -259,31 +265,35 @@ export function Insights() {
         </Card>
       </div>
       <details className="modern-plan-details">
-        <summary>Forecast & spending details</summary>
+        <summary>{t("Forecast & spending details")}</summary>
         <Card>
           <div className="stat-grid">
             <div>
-              Monthly forecast<strong>{money(p.forecast)}</strong>
+              {t("Monthly forecast")}
+              <strong>{money(p.forecast)}</strong>
             </div>
             <div>
-              Daily average<strong>{money(p.daily_average)}</strong>
+              {t("Daily average")}
+              <strong>{money(p.daily_average)}</strong>
             </div>
             <div>
-              Biggest expense
+              {t("Biggest expense")}
               <strong>{biggest ? money(biggest.amount) : "—"}</strong>
               <small>{biggest?.description}</small>
             </div>
             <div>
-              Savings rate
+              {t("Savings rate")}
               <strong>
                 {p.savings_rate === null ? "—" : p.savings_rate + "%"}
               </strong>
             </div>
             <div>
-              Transactions<strong>{expenses.length}</strong>
+              {t("Transactions")}
+              <strong>{expenses.length}</strong>
             </div>
             <div>
-              Categories<strong>{sorted.length}</strong>
+              {t("Categories")}
+              <strong>{sorted.length}</strong>
             </div>
           </div>
         </Card>

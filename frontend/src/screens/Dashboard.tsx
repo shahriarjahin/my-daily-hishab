@@ -41,10 +41,16 @@ export function TransactionRow({
         {money(entry.amount)}
       </div>
       <div className="row-actions">
-        <button aria-label={"Edit " + entry.description} onClick={edit}>
+        <button
+          aria-label={t("Edit {name}", { name: entry.description })}
+          onClick={edit}
+        >
           <Icon name="edit" />
         </button>
-        <button aria-label={"Delete " + entry.description} onClick={remove}>
+        <button
+          aria-label={t("Delete {name}", { name: entry.description })}
+          onClick={remove}
+        >
           <Icon name="trash" />
         </button>
       </div>
@@ -100,7 +106,7 @@ export function Breakdown({ rows }: { rows: Transaction[] }) {
   );
 }
 function FlowGraph({ rows, start }: { rows: Transaction[]; start: string }) {
-  const { money } = useStore(),
+  const { money, t } = useStore(),
     end = day(),
     days =
       Math.round(
@@ -136,7 +142,7 @@ function FlowGraph({ rows, start }: { rows: Transaction[]; start: string }) {
       .join(" L");
   return (
     <div className="cash-graph">
-      <svg viewBox="0 0 400 155" role="img" aria-label="Net cash flow">
+      <svg viewBox="0 0 400 155" role="img" aria-label={t("Net cash flow")}>
         <defs>
           <linearGradient id="flow-fill" x2="0" y2="1">
             <stop stopColor="#e0a436" stopOpacity=".28" />

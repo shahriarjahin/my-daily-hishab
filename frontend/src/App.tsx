@@ -30,13 +30,15 @@ function Auth() {
             alt="Hishab"
           />
           <h1>
-            Your money.
+            {t("Your money.")}
             <br />
-            Your space.
+            {t("Your space.")}
             <br />
-            <span>Everywhere.</span>
+            <span>{t("Everywhere.")}</span>
           </h1>
-          <p>English, বাংলা or Banglish · Your everyday finance companion</p>
+          <p>
+            {t("English, বাংলা or Banglish · Your everyday finance companion")}
+          </p>
         </section>
         <Card className="auth-card">
           <div className="signin-brand">
@@ -117,14 +119,16 @@ function Auth() {
             <ErrorMessage message={error} />
             <Button type="submit" disabled={working}>
               {working
-                ? "Working…"
+                ? t("Working…")
                 : t(mode === "login" ? "Sign in" : "Create account")}
             </Button>
           </form>
           <p className="form-hint">
-            {native
-              ? "Encrypted on this phone. Syncs with your account."
-              : "Your records stay in your cloud account."}
+            {t(
+              native
+                ? "Encrypted on this phone. Syncs with your account."
+                : "Your records stay in your cloud account.",
+            )}
           </p>
         </Card>
       </div>
@@ -141,6 +145,7 @@ export default function App() {
       refresh,
       t,
       navigate,
+      goBack,
       busy,
       mutate,
     } = useStore(),
@@ -157,7 +162,7 @@ export default function App() {
       else if (auto) setAuto(false);
       else if (form) setForm(null);
       else if (sheet) setSheet(false);
-      else if (route !== "home") navigate("home");
+      else if (route !== "home") goBack();
       else if (native) void device("exit");
     };
     window.addEventListener("hishab-back", back);
@@ -172,9 +177,9 @@ export default function App() {
     return (
       <main>
         <Card>
-          <h1>Could not load Hishab</h1>
+          <h1>{t("Could not load Hishab")}</h1>
           <ErrorMessage message={error} />
-          <Button onClick={() => void refresh()}>Retry</Button>
+          <Button onClick={() => void refresh()}>{t("Retry")}</Button>
         </Card>
       </main>
     );
@@ -183,14 +188,14 @@ export default function App() {
     return (
       <main>
         <Card>
-          <h1>Cloud setup required</h1>
+          <h1>{t("Cloud setup required")}</h1>
           <p>{cloud.message}</p>
-          <a href="/api/cloud/setup.sql">Setup SQL</a>
-          <Button onClick={() => void refresh()}>Check again</Button>
+          <a href="/api/cloud/setup.sql">{t("Setup SQL")}</a>
+          <Button onClick={() => void refresh()}>{t("Check again")}</Button>
         </Card>
       </main>
     );
-  if (!s) return <main>Loading your account…</main>;
+  if (!s) return <main>{t("Loading your account…")}</main>;
   const forms = formFactory(s),
     links: [Route, string, string][] = [
       ["home", "Home", "home"],
@@ -253,7 +258,7 @@ export default function App() {
     default:
       content = (
         <>
-          <Title>More</Title>
+          <Title>{t("More")}</Title>
           <div className="destination-list">
             {(
               [
@@ -292,7 +297,7 @@ export default function App() {
             />
             <span>hishab.</span>
           </a>
-          <nav aria-label="Main navigation">
+          <nav aria-label={t("Main navigation")}>
             {links.map(([r, label, i]) => (
               <a
                 href={"#" + r}
@@ -307,7 +312,7 @@ export default function App() {
           </nav>
           <div className="sidebar-footer">
             <span className="status-dot" />
-            {native ? "Encrypted on device" : "Cloud account"}
+            {t(native ? "Encrypted on device" : "Cloud account")}
           </div>
         </aside>
         <div className="workspace">
@@ -316,7 +321,7 @@ export default function App() {
           </main>
         </div>
       </div>
-      <nav className="mobile-nav" aria-label="Mobile navigation">
+      <nav className="mobile-nav" aria-label={t("Mobile navigation")}>
         {(
           [
             ["home", "Home", "home"],
@@ -371,7 +376,11 @@ export default function App() {
       {auto && <AutoPlan close={() => setAuto(false)} />}{" "}
       {deletion && (
         <Modal title="Delete" close={() => setDeletion(null)}>
-          <p>Remove “{deletion.label}”? Related balances will update.</p>
+          <p>
+            {t("Remove “{name}”? Related balances will update.", {
+              name: deletion.label,
+            })}
+          </p>
           <ErrorMessage message={deleteError} />
           <div className="form-actions">
             <Button secondary onClick={() => setDeletion(null)}>

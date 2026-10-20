@@ -6,6 +6,7 @@ const paths: Record<string, string> = {
   spark: "m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z",
   wallet: "M20 7V4H6a3 3 0 0 0 0 6h15v10H6a3 3 0 0 1-3-3V7M21 12h-6v5h6",
   arrow: "M5 12h14m-6-6 6 6-6 6",
+  back: "M19 12H5m6-6-6 6 6 6",
   close: "m6 6 12 12M6 18 18 6",
   down: "M12 4v16m-6-6 6 6 6-6",
   up: "M12 20V4m-6 6 6-6 6 6",

@@ -28,7 +28,7 @@ function DeviceSettings() {
       await device(op, body);
       await check();
       await refresh();
-      notify(t("Saved"));
+      notify("Saved");
     } catch (e) {
       setError((e as Error).message);
     }
@@ -38,7 +38,7 @@ function DeviceSettings() {
       <Card className="section-gap">
         <div className="section-title">
           <h2>{t("Sync now")}</h2>
-          <span className="pill">{status?.sync_state}</span>
+          <span className="pill">{t(status?.sync_state || "idle")}</span>
         </div>
         <div className="toolbar">
           <Button onClick={() => void run("sync")}>{t("Sync now")}</Button>
@@ -74,7 +74,9 @@ function DeviceSettings() {
             {t("Recovery copies")}
           </Button>
           {status?.sync_state === "conflict" && (
-            <Button onClick={() => setConflict(true)}>Review conflict</Button>
+            <Button onClick={() => setConflict(true)}>
+              {t("Review conflict")}
+            </Button>
           )}
         </div>
         <details>
@@ -86,7 +88,7 @@ function DeviceSettings() {
             }}
           >
             <label className="form-field">
-              HTTPS backend URL
+              {t("HTTPS backend URL")}
               <input
                 type="url"
                 value={server}
@@ -95,8 +97,9 @@ function DeviceSettings() {
               />
             </label>
             <p className="form-hint">
-              Use your own Hishab server. Your sign-in token is sent to this
-              server for AI requests.
+              {t(
+                "Use your own Hishab server. Your sign-in token is sent to this server for AI requests.",
+              )}
             </p>
             <Button type="submit">{t("Save")}</Button>
           </form>
@@ -130,15 +133,16 @@ function DeviceSettings() {
           {t("Check for updates")}
         </Button>
         <p className="form-hint">
-          GitHub downloads · Android confirms installation
+          {t("GitHub downloads · Android confirms installation")}
         </p>
       </Card>
       <ErrorMessage message={error} />
       {conflict && (
         <Modal title="Choose a sync copy" close={() => setConflict(false)}>
           <p>
-            Choose the complete workspace to keep. Both versions are saved as
-            recovery copies before replacement.
+            {t(
+              "Choose the complete workspace to keep. Both versions are saved as recovery copies before replacement.",
+            )}
           </p>
           <div className="toolbar">
             <Button
@@ -147,7 +151,7 @@ function DeviceSettings() {
                 void run("resolve", { choice: "cloud" });
               }}
             >
-              Use cloud copy
+              {t("Use cloud copy")}
             </Button>
             <Button
               secondary
@@ -156,7 +160,7 @@ function DeviceSettings() {
                 void run("resolve", { choice: "device" });
               }}
             >
-              Keep phone copy
+              {t("Keep phone copy")}
             </Button>
           </div>
         </Modal>
@@ -183,7 +187,7 @@ export function SettingsScreen({ edit }: { edit: Editor }) {
   const save = async (values: Partial<SettingsType>) => {
     try {
       await mutate("/settings", "PATCH", values);
-      notify(t("Saved"));
+      notify("Saved");
     } catch (e) {
       setError((e as Error).message);
     }
@@ -191,9 +195,9 @@ export function SettingsScreen({ edit }: { edit: Editor }) {
   if (route === "connections")
     return (
       <>
-        <Title>AI connections</Title>
+        <Title>{t("AI connections")}</Title>
         <p className="form-hint">
-          {t("Automatic fallback")} · lower priority first
+          {t("Automatic fallback")} · {t("lower priority first")}
         </p>
         {providers.length ? (
           providers.map((p) => (
@@ -202,13 +206,15 @@ export function SettingsScreen({ edit }: { edit: Editor }) {
                 <h2>{p.name}</h2>
                 <p className="muted">{p.model}</p>
                 <p className={p.configured ? "positive" : "muted"}>
-                  {p.configured
-                    ? p.enabled
-                      ? "Connected"
-                      : "Paused"
-                    : "Not connected"}
+                  {t(
+                    p.configured
+                      ? p.enabled
+                        ? "Connected"
+                        : "Paused"
+                      : "Not connected",
+                  )}
                   {p.last_error
-                    ? " · " + p.last_error.replaceAll("_", " ")
+                    ? " · " + t(p.last_error.replaceAll("_", " "))
                     : ""}
                 </p>
               </div>
@@ -228,11 +234,12 @@ export function SettingsScreen({ edit }: { edit: Editor }) {
             )
           }
         >
-          Retry providers
+          {t("Retry providers")}
         </Button>
         <p className="form-hint">
-          Keys are encrypted on the server. AI requests may reach multiple
-          providers.
+          {t(
+            "Keys are encrypted on the server. AI requests may reach multiple providers.",
+          )}
         </p>
         <ErrorMessage message={error} />
       </>
@@ -240,7 +247,7 @@ export function SettingsScreen({ edit }: { edit: Editor }) {
   if (route === "data")
     return (
       <>
-        <Title>Data & app</Title>
+        <Title>{t("Data & app")}</Title>
         <Card>
           <h2>{t("Export")}</h2>
           <Button
@@ -285,14 +292,17 @@ export function SettingsScreen({ edit }: { edit: Editor }) {
             CSV
           </Button>
           <p className="form-hint">
-            {s!.transactions.length} entries · {s!.wallets.length} wallets
+            {t("{count} entries", { count: s!.transactions.length })} ·{" "}
+            {t("{count} wallets", { count: s!.wallets.length })}
           </p>
         </Card>
         {!native && (
           <Card className="section-gap">
-            <h2>Import previous records</h2>
+            <h2>{t("Import previous records")}</h2>
             <p className="form-hint">
-              Only allowed for an empty account. Existing records are protected.
+              {t(
+                "Only allowed for an empty account. Existing records are protected.",
+              )}
             </p>
             <input
               type="file"
@@ -311,7 +321,7 @@ export function SettingsScreen({ edit }: { edit: Editor }) {
                     data: JSON.parse(await restore.text()),
                     expected_revision: s!.revision,
                   });
-                  notify(t("Saved"));
+                  notify("Saved");
                 } catch (e) {
                   setError((e as Error).message);
                 }
@@ -327,7 +337,7 @@ export function SettingsScreen({ edit }: { edit: Editor }) {
     );
   return (
     <>
-      <Title>Settings</Title>
+      <Title>{t("Settings")}</Title>
       <Card>
         <form
           className="settings-row"
@@ -392,7 +402,7 @@ export function SettingsScreen({ edit }: { edit: Editor }) {
           />
         </label>
         <div className="settings-row">
-          <span>BDT · Bangladeshi taka</span>
+          <span>{t("BDT · Bangladeshi taka")}</span>
           <span>৳</span>
         </div>
       </Card>
@@ -417,7 +427,7 @@ export function SettingsScreen({ edit }: { edit: Editor }) {
       </div>
       {native && <DeviceSettings />}
       <Card className="developer-credit section-gap">
-        <small>Developed by</small>
+        <small>{t("Developed by")}</small>
         <h3>Shahriar Morshed Jahin</h3>
         <div className="credit-links">
           <a
@@ -428,7 +438,7 @@ export function SettingsScreen({ edit }: { edit: Editor }) {
             GitHub ↗
           </a>
           <span>
-            Courtesy of <strong>DigitXBD</strong>
+            {t("Courtesy of")} <strong>DigitXBD</strong>
           </span>
         </div>
       </Card>
@@ -442,8 +452,9 @@ export function SettingsScreen({ edit }: { edit: Editor }) {
       {confirmLogout && (
         <Modal title="Sign out" close={() => setConfirmLogout(false)}>
           <p>
-            Sync pending changes or export a backup before removing this
-            account’s session.
+            {t(
+              "Sync pending changes or export a backup before removing this account’s session.",
+            )}
           </p>
           <div className="toolbar">
             <Button

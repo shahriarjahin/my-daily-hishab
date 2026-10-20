@@ -67,7 +67,7 @@ export function RecordForm({
               spec.method || "POST",
               spec.prepare ? spec.prepare(values) : values,
             );
-            notify(t("Saved"));
+            notify("Saved");
             close();
           } catch (e) {
             setError((e as Error).message);
@@ -75,7 +75,7 @@ export function RecordForm({
         }}
       >
         <div className="form-grid">
-          {spec.note && <p className="form-hint wide">{spec.note}</p>}
+          {spec.note && <p className="form-hint wide">{t(spec.note)}</p>}
           {spec.fields.map((f) => (
             <label key={f.name} className="form-field">
               {t(f.label)}

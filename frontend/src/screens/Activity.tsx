@@ -64,6 +64,8 @@ export function Activity({
           [
             r.description,
             r.category,
+            t(r.category),
+            t(r.type),
             r.amount,
             s!.wallets.find((w) => w.id === r.wallet_id)?.name,
           ]
@@ -95,6 +97,8 @@ export function Activity({
             r.description,
             r.type,
             r.category,
+            t(r.category),
+            t(r.type),
             r.amount,
             s!.wallets.find((w) => w.id === r.wallet_id)?.name,
           ]),
@@ -106,7 +110,13 @@ export function Activity({
   };
   return (
     <>
-      <Title action={<small>{filtered.length} entries</small>}>Activity</Title>
+      <Title
+        action={
+          <small>{t("{count} entries", { count: filtered.length })}</small>
+        }
+      >
+        {t("Activity")}
+      </Title>
       <div className="activity-tools">
         <input
           type="search"
@@ -140,7 +150,7 @@ export function Activity({
         </div>
         <div className="activity-options">
           <select
-            aria-label="Activity period"
+            aria-label={t("Activity period")}
             value={period}
             onChange={(e) => setPeriod(e.target.value)}
           >
@@ -157,7 +167,7 @@ export function Activity({
             ))}
           </select>
           <select
-            aria-label="Entry type"
+            aria-label={t("Entry type")}
             value={type}
             onChange={(e) => setType(e.target.value)}
           >
@@ -207,7 +217,9 @@ export function Activity({
               >
                 <option value="">{t("All")}</option>
                 {s!.categories.map((c) => (
-                  <option key={c}>{c}</option>
+                  <option key={c} value={c}>
+                    {t(c)}
+                  </option>
                 ))}
               </select>
             </label>
@@ -269,7 +281,9 @@ export function Activity({
               <div key={r.kind + "-" + r.id}>
                 {label && (
                   <div className="activity-date">
-                    <span>{key === today ? t("Today") : key || "Undated"}</span>
+                    <span>
+                      {key === today ? t("Today") : key || t("Undated")}
+                    </span>
                     <small>{money(net)}</small>
                   </div>
                 )}
@@ -303,7 +317,7 @@ export function Activity({
                     {r.type !== "opening" && (
                       <button
                         className="icon-button"
-                        aria-label={"Delete " + r.description}
+                        aria-label={t("Delete {name}", { name: r.description })}
                         onClick={() =>
                           remove("/movements/" + r.id, r.description)
                         }
