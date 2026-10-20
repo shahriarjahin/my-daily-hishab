@@ -87,3 +87,10 @@ test('regular trackers enforce one tracker per expense category',()=>{
  assert.throws(()=>change(w,'/regulars','POST',{name:'Duplicate',category:'Food',daily_limit:50,unit:'meals'}));
  assert.throws(()=>change(w,'/regulars','POST',{name:'Salary',category:'Salary',daily_limit:50,unit:'pcs'}));
 });
+
+test('optional AI, currency and navigation preferences validate and persist',()=>{
+ let w=fresh();assert.equal(ledger.state(w).settings.ai_enabled,false);w=change(w,'/settings','PATCH',{ai_enabled:true,currency:'USD',bottom_nav:'goals'});assert.equal(w.settings.currency,'USD');assert.equal(w.settings.bottom_nav,'goals');assert.throws(()=>change(w,'/settings','PATCH',{currency:'INVALID'}));assert.throws(()=>change(w,'/settings','PATCH',{bottom_nav:'INVALID'}));
+});
+test('editing savings preserves cash and category deletion protects history',()=>{
+ let w=change(fresh(),'/wallets/1','PATCH',{opening_balance:500});w=change(w,'/savings','POST',{amount:300,category:'Savings',wallet_id:1});w=change(w,'/savings/1','PUT',{amount:400,category:'Savings',wallet_id:1});assert.equal(ledger.balance(w,1),500);assert.equal(ledger.available(w,1),100);assert.throws(()=>change(w,'/savings/1','PUT',{amount:501,category:'Savings',wallet_id:1}));const used=w.category_details.find(c=>c.name==='Savings');assert.throws(()=>change(w,'/categories/'+used.id,'DELETE'));const unused=w.category_details.find(c=>c.name==='Food');w=change(w,'/categories/'+unused.id,'DELETE');assert.ok(!w.category_details.some(c=>c.name==='Food'));
+});

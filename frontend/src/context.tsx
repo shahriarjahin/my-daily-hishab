@@ -22,10 +22,12 @@ const routes = new Set<Route>([
   "regulars",
   "parser",
   "settings",
+  "general",
   "categories",
   "connections",
   "data",
   "more",
+  "password",
 ]);
 const currentRoute = () =>
   routes.has(location.hash.slice(1) as Route)
@@ -99,11 +101,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setState(next);
         setError("");
       }
-      api<{ providers: Provider[] }>("/ai/providers")
-        .then((result) => {
-          if (id === generation.current) setProviders(result.providers);
-        })
-        .catch(() => {});
+      if (next.settings.ai_enabled)
+        api<{ providers: Provider[] }>("/ai/providers")
+          .then((result) => {
+            if (id === generation.current) setProviders(result.providers);
+          })
+          .catch(() => {});
     } catch (e) {
       if (id === generation.current)
         setError(e instanceof Error ? e.message : "Could not load account.");
@@ -226,9 +229,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         notify,
         t: (text, values) => translate(text, language, values),
         money: (n) =>
-          "৳" +
           new Intl.NumberFormat(language === "bn" ? "bn-BD" : "en-IN", {
-            maximumFractionDigits: 2,
+            style: "currency", currency: state?.settings.currency || "BDT", currencyDisplay: "narrowSymbol", minimumFractionDigits: 0, maximumFractionDigits: 2,
           }).format(n),
       }}
     >

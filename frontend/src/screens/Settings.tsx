@@ -29,6 +29,7 @@ function DeviceSettings() {
       await check();
       await refresh();
       notify("Saved");
+      return true;
     } catch (e) {
       setError((e as Error).message);
     }
@@ -80,7 +81,7 @@ function DeviceSettings() {
           )}
         </div>
         <details>
-          <summary>{t("AI server")}</summary>
+          <summary>{t("App server")}</summary>
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -97,9 +98,7 @@ function DeviceSettings() {
               />
             </label>
             <p className="form-hint">
-              {t(
-                "Use your own Hishab server. Your sign-in token is sent to this server for AI requests.",
-              )}
+              {t("Use your own Hishab server for cloud sync and optional AI.")}
             </p>
             <Button type="submit">{t("Save")}</Button>
           </form>
@@ -178,9 +177,11 @@ export function SettingsScreen({ edit }: { edit: Editor }) {
       navigate,
       mutate,
       notify,
+      busy,
     } = useStore(),
     [error, setError] = useState(""),
     [name, setName] = useState(s!.settings.name),
+    [editingName, setEditingName] = useState(false),
     [confirmLogout, setConfirmLogout] = useState(false),
     [restore, setRestore] = useState<File | null>(null);
   const forms = formFactory(s!);
@@ -188,6 +189,7 @@ export function SettingsScreen({ edit }: { edit: Editor }) {
     try {
       await mutate("/settings", "PATCH", values);
       notify("Saved");
+      return true;
     } catch (e) {
       setError((e as Error).message);
     }
@@ -304,7 +306,7 @@ export function SettingsScreen({ edit }: { edit: Editor }) {
                 "Only allowed for an empty account. Existing records are protected.",
               )}
             </p>
-            <input
+            <input disabled={busy}
               type="file"
               accept="application/json,.json"
               onChange={(e) => setRestore(e.target.files?.[0] || null)}
@@ -335,32 +337,12 @@ export function SettingsScreen({ edit }: { edit: Editor }) {
         <ErrorMessage message={error} />
       </>
     );
-  return (
-    <>
-      <Title>{t("Settings")}</Title>
+  if (route === "general") return <><Title>{t("General & Appearance")}</Title>
       <Card>
-        <form
-          className="settings-row"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void save({ name });
-          }}
-        >
-          <label className="form-field">
-            {t("Name")}
-            <input
-              value={name}
-              maxLength={60}
-              onChange={(e) => setName(e.target.value)}
-            />
-          </label>
-          <Button type="submit" secondary>
-            {t("Save")}
-          </Button>
-        </form>
+
         <label className="settings-row">
           {t("Appearance")}
-          <select
+          <select disabled={busy}
             aria-label={t("Appearance")}
             value={s!.settings.theme}
             onChange={(e) =>
@@ -380,7 +362,7 @@ export function SettingsScreen({ edit }: { edit: Editor }) {
         </label>
         <label className="settings-row">
           {t("Language")}
-          <select
+          <select disabled={busy}
             aria-label={t("Language")}
             value={s!.settings.language}
             onChange={(e) =>
@@ -392,43 +374,142 @@ export function SettingsScreen({ edit }: { edit: Editor }) {
           </select>
         </label>
         <label className="settings-row">
-          {t("Review before saving")}
-          <input
+          {t("Enable AI")}
+          <input disabled={busy}
             type="checkbox"
-            checked={s!.settings.review_before_saving}
-            onChange={(e) =>
-              void save({ review_before_saving: e.target.checked })
-            }
+            checked={s!.settings.ai_enabled}
+            onChange={(e) => void save({ ai_enabled: e.target.checked })}
           />
         </label>
-        <div className="settings-row">
-          <span>{t("BDT · Bangladeshi taka")}</span>
-          <span>৳</span>
+        <label className="settings-row">
+          {t("Currency")}
+          <select disabled={busy}
+            aria-label={t("Currency")}
+            value={s!.settings.currency || "BDT"}
+            onChange={(e) => void save({ currency: e.target.value })}
+          >
+            {[
+              "BDT",
+              "USD",
+              "EUR",
+              "GBP",
+              "INR",
+              "PKR",
+              "AED",
+              "SAR",
+              "QAR",
+              "KWD",
+              "CAD",
+              "AUD",
+              "SGD",
+              "MYR",
+              "JPY",
+              "CNY",
+            ].map((code) => (
+              <option key={code} value={code}>
+                {code} ·{" "}
+                {new Intl.DisplayNames(
+                  [s!.settings.language === "bn" ? "bn" : "en"],
+                  { type: "currency" },
+                ).of(code)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <p className="form-hint">
+          {t("Currency changes the display only; amounts are not converted.")}
+        </p>
+        <label className="settings-row">
+          {t("Bottom navigation")}
+          <select disabled={busy}
+            aria-label={t("Bottom navigation")}
+            value={!s!.settings.ai_enabled && s!.settings.bottom_nav === "hub" ? "wallets" : s!.settings.bottom_nav || "wallets"}
+            onChange={(e) =>
+              void save({
+                bottom_nav: e.target.value as SettingsType["bottom_nav"],
+              })
+            }
+          >
+            {[
+              ["wallets", "Wallets"],
+              ["budgets", "Budgets"],
+              ["goals", "Goals"],
+              ["regulars", "Regulars"],
+              ["loans", "Loans"],
+              ["more", "More"],
+              ...(s!.settings.ai_enabled ? [["hub", "Ask"]] : []),
+            ].map(([route, label]) => (
+              <option key={route} value={route}>
+                {t(label)}
+              </option>
+            ))}
+          </select>
+        </label>
+        {s!.settings.ai_enabled && (
+          <label className="settings-row">
+            {t("Review before saving")}
+            <input disabled={busy}
+              type="checkbox"
+              checked={s!.settings.review_before_saving}
+              onChange={(e) =>
+                void save({ review_before_saving: e.target.checked })
+              }
+            />
+          </label>
+        )}
+      </Card>
+<ErrorMessage message={error}/></>;
+  return (
+    <>
+      <Title>{t("Settings")}</Title>
+      <Card className="account-card">
+        <form className="account-identity" onSubmit={e=>{e.preventDefault();if(editingName)void save({name}).then(saved=>{if(saved)setEditingName(false);});}}>
+          <span className="account-avatar" aria-hidden="true">{(s!.settings.name.trim() || cloud?.email || "H").slice(0,1).toLocaleUpperCase()}</span>
+          <div className="account-name-details">
+            {editingName ? <input className="account-name-inline" aria-label={t("Name")} autoFocus disabled={busy} maxLength={60} value={name} onChange={e=>setName(e.target.value)} onKeyDown={e=>{if(e.key === "Escape"){e.preventDefault();setName(s!.settings.name);setEditingName(false);}}}/> : <h2>{s!.settings.name || t("Your account")}</h2>}
+            <p className="muted">{cloud?.email}</p>
+          </div>
+          {editingName ? <button key="save-name" type="submit" disabled={busy} className="account-name-edit text-button" aria-label={t("Save")}><Icon name="check"/></button> : <button key="edit-name" type="button" className="account-name-edit text-button" aria-label={t("Edit name")} onClick={()=>{setName(s!.settings.name);setEditingName(true);}}><Icon name="edit"/></button>}
+        </form>
+        <div className="account-buttons">
+          <Button secondary onClick={() => navigate("password")}>{t("Change password")}</Button>
+          <button type="button" className="secondary-button account-signout" onClick={() => setConfirmLogout(true)}>{t("Sign out")}</button>
         </div>
       </Card>
       <div className="destination-list section-gap">
         {(
           [
+            ["general", "General & Appearance", "settings"],
             ["categories", "Categories", "shopping"],
             ["connections", "AI connections", "spark"],
             ["data", "Data & app", "download"],
           ] as const
-        ).map(([r, label, i]) => (
-          <button
-            className="destination-card"
-            key={r}
-            onClick={() => navigate(r)}
-          >
-            <Icon name={i} />
-            <strong>{t(label)}</strong>
-            <Icon name="arrow" />
-          </button>
-        ))}
+        )
+          .filter(([r]) => s!.settings.ai_enabled || r !== "connections")
+          .map(([r, label, i]) => (
+            <button
+              className="destination-card"
+              key={r}
+              onClick={() => navigate(r)}
+            >
+              <Icon name={i} />
+              <strong>{t(label)}</strong>
+              <Icon name="arrow" />
+            </button>
+          ))}
       </div>
       {native && <DeviceSettings />}
       <Card className="developer-credit section-gap">
         <small>{t("Developed by")}</small>
-        <h3>Shahriar Morshed Jahin</h3>
+        <div className="developer-person">
+          <img
+            src="/static/developer-avatar.png"
+            width="36"
+            height="36"
+            alt=""
+          />
+          <h3>Shahriar Morshed Jahin</h3>
+        </div>
         <div className="credit-links">
           <a
             href="https://github.com/shahriarjahin"
@@ -437,17 +518,13 @@ export function SettingsScreen({ edit }: { edit: Editor }) {
           >
             GitHub ↗
           </a>
-          <span>
-            {t("Courtesy of")} <strong>DigitXBD</strong>
-          </span>
+          <img
+            className="digitxbd-credit-logo"
+            src="/static/digitxbd-logo.png"
+            alt="DigitXBD"
+          />
         </div>
       </Card>
-      <div className="settings-row">
-        <span className="muted">{cloud?.email}</span>
-        <Button secondary onClick={() => setConfirmLogout(true)}>
-          {t("Sign out")}
-        </Button>
-      </div>
       <ErrorMessage message={error} />
       {confirmLogout && (
         <Modal title="Sign out" close={() => setConfirmLogout(false)}>

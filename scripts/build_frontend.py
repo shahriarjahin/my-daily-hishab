@@ -11,7 +11,7 @@ def build():
     static = frontend / 'public' / 'static'
     static.mkdir(parents=True, exist_ok=True)
     for name in ('hishab-logo-v2.png', 'hishab-icon-v2-192.png', 'hishab-icon-v2-512.png',
-                 'NotoSansBengali-400.ttf', 'NotoSansBengali-600.ttf', 'NotoSansBengali-OFL.txt'):
+                 'digitxbd-logo.png', 'developer-avatar.png', 'NotoSansBengali-400.ttf', 'NotoSansBengali-600.ttf', 'NotoSansBengali-OFL.txt'):
         shutil.copyfile(ROOT / 'backend/static' / name, static / name)
     shutil.copytree(ROOT / 'backend/static/wallet-logos', static / 'wallet-logos', dirs_exist_ok=True)
     npm = shutil.which('npm.cmd') or shutil.which('npm')

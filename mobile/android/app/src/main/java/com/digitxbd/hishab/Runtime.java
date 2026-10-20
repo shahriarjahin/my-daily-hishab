@@ -68,7 +68,7 @@ final class Runtime {
             .put("dirty",row.optBoolean("dirty")).put("synced_at",row.opt("synced_at")).put("message",syncMessage).put("backend_url",preferences.getString("backend_url",config.optString("backend_url","")));
     }
     JSONObject login(JSONObject body,boolean signup) throws Exception {
-        JSONObject result=http(config.getString("supabase_url"),signup?"/auth/v1/signup":"/auth/v1/token?grant_type=password","POST",body,null).getJSONObject("data");
+        JSONObject result=http(config.getString("supabase_url"),signup?"/auth/v1/signup?redirect_to="+java.net.URLEncoder.encode(preferences.getString("backend_url",config.optString("backend_url","https://mydailyhishab.vercel.app"))+"/auth/callback","UTF-8"):"/auth/v1/token?grant_type=password","POST",body,null).getJSONObject("data");
         if(!result.has("access_token"))return new JSONObject().put("signed_in",false).put("message","Check your email, then sign in.");
         session(result);syncState="pending";syncMessage="";
         try{sync();}catch(Exception e){syncMessage=e.getMessage();}
@@ -80,9 +80,11 @@ final class Runtime {
         String account=user();JSONObject local=store.load(account);syncState="syncing";notifyChange();
         try{
             String bearer=token();
-            JSONArray rows=http(config.getString("supabase_url"),"/rest/v1/hishab_workspaces?select=data,revision&user_id=eq."+account,"GET",null,bearer).getJSONArray("data");
-            long revision=rows.length()==0?0:rows.getJSONObject(0).getLong("revision");
-            JSONObject remote=rows.length()==0?null:rows.getJSONObject(0).getJSONObject("data");
+            String base=preferences.getString("backend_url",config.optString("backend_url",""));
+            if(base.isEmpty())throw new IllegalStateException("Set the Hishab server URL to sync encrypted cloud records.");
+            JSONObject cloud=http(base,"/api/cloud/workspace","GET",null,bearer).getJSONObject("data");
+            long revision=cloud.optLong("revision",0);
+            JSONObject remote=cloud.optJSONObject("data");
             if(!local.optBoolean("exists")){
                 if(remote!=null)store.pulled(account,remote,revision,0);
                 else {try(InputStream in=context.getAssets().open("empty-workspace.json")){store.save(account,new JSONObject(read(in)),0);}local=store.load(account);}
@@ -95,9 +97,9 @@ final class Runtime {
                     store.conflict(account,remote,revision);syncState="conflict";return;
                 }
                 try{
-                    Object saved=http(config.getString("supabase_url"),"/rest/v1/rpc/save_hishab_workspace","POST",new JSONObject().put("expected_revision",revision).put("workspace_data",local.getJSONObject("workspace")),bearer).get("data");
+                    Object saved=http(base,"/api/cloud/workspace","POST",new JSONObject().put("expected_revision",revision).put("data",local.getJSONObject("workspace")),bearer).getJSONObject("data").get("revision");
                     store.uploaded(account,local.getLong("seq"),((Number)saved).longValue());
-                }catch(HttpError e){if(e.code.equals("40001")){syncState="pending";throw new IllegalStateException("Another device saved changes. Sync again to review.");}throw e;}
+                }catch(HttpError e){if(e.status==409||e.code.equals("40001")){syncState="pending";throw new IllegalStateException("Another device saved changes. Sync again to review.");}throw e;}
             }else if(remote!=null&&revision!=local.optLong("revision"))store.pulled(account,remote,revision,local.optLong("seq"));
             syncState=store.load(account).optBoolean("dirty")?"pending":"synced";syncMessage="";
         }catch(Exception e){syncState="offline";syncMessage=e instanceof HttpError&&((HttpError)e).status==401?"Sign in again to resume sync. Your device records are safe.":"Sync unavailable. Changes stay on this device.";throw e;}
@@ -131,6 +133,8 @@ final class Runtime {
             case "save":{String account=user();JSONObject workspace=body.getJSONObject("workspace");if(workspace.toString().length()>8000000)throw new IllegalArgumentException("Workspace is too large.");JSONObject saved=store.save(account,workspace,body.getLong("seq"));syncState="pending";scheduleSync();return saved;}
             case "login":return login(body,false);
             case "signup":return login(body,true);
+            case "forgot-password":{String base=preferences.getString("backend_url",config.optString("backend_url","https://mydailyhishab.vercel.app"));context.startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse(base+"/?forgot=1")).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK));return new JSONObject().put("opened",true);}
+            case "password":http(config.getString("supabase_url"),"/auth/v1/user","PUT",body,token());return new JSONObject().put("saved",true);
             case "logout":session(null);syncState="offline";return new JSONObject().put("signed_in",false);
             case "sync":sync();return status();
             case "resolve":store.resolve(user(),body.getString("choice"));sync();return status();

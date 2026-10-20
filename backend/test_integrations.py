@@ -93,6 +93,7 @@ class CloudTests(unittest.TestCase):
         self.assertEqual(self.get_state()["wallets"][0]["balance"], 1500)
 
     def test_selected_spending_wallet_and_balance_preview(self):
+        self.client.patch("/api/settings", headers=self.headers, json={"ai_enabled": True})
         def suggestions(prompt, text, validator):
             return validator({"wallets": [], "transactions": [{"description": "Lunch", "amount": 250, "type": "expense", "category": "Food"}]}) | {"provider": "Test", "fallback_used": False}
         with patch("backend.ai.extract", side_effect=suggestions):

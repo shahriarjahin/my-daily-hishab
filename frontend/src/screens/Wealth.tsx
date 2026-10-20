@@ -27,20 +27,16 @@ export function Wealth({
       </Title>
       {route === "wallets" && (
         <>
-          <div className="toolbar">
-            <Button onClick={() => edit(forms.wallet())}>
-              {t("Add wallet")}
-            </Button>
-            <Button secondary onClick={() => edit(forms.transfer())}>
-              {t("Transfer")}
-            </Button>
-            <Button secondary onClick={() => navigate("loans")}>
-              {t("Loans")}
-            </Button>
-            <Button secondary onClick={() => navigate("parser")}>
-              {t("AI balances")}
-            </Button>
-          </div>
+          <section className="wallet-actions" aria-label={t("Wallet actions")}>
+            <button aria-label={t("Add wallet")} className="wallet-create-action" onClick={()=>edit(forms.wallet())}>
+              <span className="wallet-action-icon"><Icon name="wallet-add"/></span><span><strong>{t("Add wallet")}</strong><small>{t("Cash, bank or mobile account")}</small></span><Icon name="arrow"/>
+            </button>
+            <div className="wallet-tools">
+              <button aria-label={t("Transfer")} className="wallet-transfer-action" onClick={()=>edit(forms.transfer())}><span className="wallet-action-icon"><Icon name="transfer"/></span><strong>{t("Transfer")}</strong><small>{t("Between your wallets")}</small></button>
+              <button aria-label={t("Loans")} className="wallet-loans-action" onClick={()=>navigate("loans")}><span className="wallet-action-icon"><Icon name="loans"/></span><strong>{t("Loans")}</strong><small>{t("Borrowed & lent")}</small></button>
+            </div>
+            {s!.settings.ai_enabled && <button className="text-button wallet-ai-action" onClick={()=>navigate("parser")}><Icon name="spark"/>{t("AI balances")}</button>}
+          </section>
           <div className="record-grid">
             {s!.wallets.map((w) => (
               <Card key={w.id}>
@@ -126,6 +122,9 @@ export function Wealth({
                 </p>
               </div>
               <strong>{money(x.amount)}</strong>
+              <Button secondary onClick={() => edit(forms.saving(x))}>
+                {t("Edit")}
+              </Button>
               <button
                 className="text-button"
                 onClick={() => remove("/savings/" + x.id, x.category)}
@@ -229,18 +228,27 @@ export function Wealth({
                 {s!.category_details
                   .filter((c) => c.bucket === bucket)
                   .map((c) => (
-                    <button
-                      key={c.id}
-                      className={
-                        "category-chip " + (c.archived ? "archived" : "")
-                      }
-                      style={{ borderColor: c.color, color: c.color }}
-                      onClick={() => edit(forms.category(c))}
-                    >
-                      <Icon name={c.icon} />
-                      {t(c.name)}
-                      {c.archived ? " · " + t("Archived") : ""}
-                    </button>
+                    <div key={c.id} className="category-actions">
+                      <button
+                        className={
+                          "category-chip " + (c.archived ? "archived" : "")
+                        }
+                        style={{ borderColor: c.color, color: c.color }}
+                        onClick={() => edit(forms.category(c))}
+                      >
+                        <Icon name={c.icon} />
+                        {t(c.name)}
+                        {c.archived ? " · " + t("Archived") : ""}
+                      </button>
+                      <button
+                        type="button"
+                        className="icon-button"
+                        aria-label={t("Delete {name}", { name: t(c.name) })}
+                        onClick={() => remove("/categories/" + c.id, c.name)}
+                      >
+                        <Icon name="trash" />
+                      </button>
+                    </div>
                   ))}
               </div>
             </Card>

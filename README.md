@@ -31,10 +31,10 @@ React · TypeScript · Capacitor · FastAPI · Supabase
 | Income, expenses and receipts | Savings goals and allocations | Search, filters and CSV exports |
 | Loans and repayments | Regular spending and quantities | AI advisor and automatic provider fallback |
 
-- **Made for daily use:** Bangladeshi taka, Bangla/English, light, dark and glass themes.
+- **Made for daily use:** BDT and popular currencies, Bangla/English, light, dark and glass themes.
 - **One account:** Supabase login and account-owned data across web and Android.
 - **Android offline:** encrypted SQLite storage with cloud sync when connected.
-- **AI-assisted entry:** English, Bangla or Banglish, with editable import previews.
+- **Optional AI:** enable it in Settings for English, Bangla or Banglish entry and editable import previews.
 - **A calmer start:** branded loading screen, reduced-motion support and placeholders during longer waits.
 
 ## Get the Android app
@@ -43,7 +43,7 @@ React · TypeScript · Capacitor · FastAPI · Supabase
 
 Requires **Android 8.0+**. Open the latest release and select the `.apk` asset. A SHA-256 checksum is included. To update, install over the existing app; do not uninstall first. Android asks for installation confirmation. You can also check for updates in the app's settings.
 
-AI features need an internet connection and a configured provider through the hosted backend. An iOS native build is not available yet.
+Cloud sync uses the hosted Hishab backend. Optional AI also needs an internet connection and a configured provider. An iOS native build is not available yet.
 
 ## Run locally
 
@@ -74,7 +74,7 @@ Open **http://127.0.0.1:8001/**. Web records remain in your Supabase account dur
 
 Never publish `.env`, signing keys or financial exports. Keep the encryption secret unchanged when moving an existing account.
 
-[Full deployment guide](docs/CLOUD_DEPLOYMENT.md)
+[Full deployment guide](docs/CLOUD_DEPLOYMENT.md) · [Sign-in, password recovery and cloud encryption setup](docs/ACCOUNT_SETUP.md)
 
 </details>
 
@@ -83,7 +83,7 @@ Never publish `.env`, signing keys or financial exports. Keep the encryption sec
 
 ```powershell
 .\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
-.\.venv\Scripts\python.exe -m unittest backend.test_api backend.test_app backend.test_integrations backend.test_finance mobile.test_compatibility -q
+.\.venv\Scripts\python.exe -m unittest backend.test_api backend.test_app backend.test_integrations backend.test_finance backend.test_account_updates mobile.test_compatibility -q
 npm test --prefix frontend
 node --test mobile/test_ledger.cjs
 npm run test:browser --prefix frontend

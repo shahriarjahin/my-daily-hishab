@@ -7,6 +7,7 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from .auth import router as auth_router
 from .api import router
 from .integrations import router as integration_router
 from .finance import router as finance_router
@@ -22,6 +23,7 @@ async def lifespan(app):
 
 app = FastAPI(lifespan=lifespan)
 app.include_router(router)
+app.include_router(auth_router)
 app.include_router(integration_router)
 app.include_router(finance_router)
 app.mount("/static", StaticFiles(directory=str(_HERE / "static")), name="static")

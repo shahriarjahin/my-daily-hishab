@@ -81,6 +81,9 @@ export interface Settings {
   theme: Theme;
   language: "en" | "bn";
   review_before_saving: boolean;
+  ai_enabled: boolean;
+  currency: string;
+  bottom_nav: Route;
   monthly_budget: number;
   planned_income: number;
   savings_target: number;
@@ -191,7 +194,9 @@ export type Route =
   | "regulars"
   | "parser"
   | "settings"
+  | "general"
   | "categories"
   | "connections"
   | "data"
+  | "password"
   | "more";

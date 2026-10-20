@@ -137,6 +137,9 @@ class SettingsInput(Input):
     theme: Literal["light", "dark", "system", "glass"] | None = None
     language: Literal["en", "bn"] | None = None
     review_before_saving: bool | None = None
+    ai_enabled: bool | None = None
+    currency: Literal["BDT", "USD", "EUR", "GBP", "INR", "PKR", "AED", "SAR", "QAR", "KWD", "CAD", "AUD", "SGD", "MYR", "JPY", "CNY"] | None = None
+    bottom_nav: Literal["wallets", "budgets", "goals", "regulars", "loans", "more", "hub"] | None = None
 
 
 class ExtractionInput(Input):

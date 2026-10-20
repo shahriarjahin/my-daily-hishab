@@ -70,7 +70,7 @@ def cookie_value(tokens):
 
 
 def set_cookie(response, tokens):
-    response.set_cookie(COOKIE, cookie_value(tokens), httponly=True, secure=os.getenv("VERCEL") == "1" or os.getenv("COOKIE_SECURE") == "true", samesite="lax", max_age=60 * 60 * 24 * 30, path="/")
+    response.set_cookie(COOKIE, cookie_value(tokens), httponly=True, secure=os.getenv("VERCEL") == "1" or os.getenv("COOKIE_SECURE") == "true" or os.getenv("HISHAB_PUBLIC_URL", "").startswith("https://"), samesite="lax", max_age=60 * 60 * 24 * 30, path="/")
 
 
 def read_session(request):
@@ -118,11 +118,25 @@ def user():
 def read_workspace():
     identity = user()
     rows = call("GET", "/rest/v1/hishab_workspaces?select=data,revision,updated_at&user_id=eq." + identity["user"]["id"], identity["access_token"])
-    return rows[0] if rows else {"data": None, "revision": 0, "updated_at": None}
+    row = rows[0] if rows else {"data": None, "revision": 0, "updated_at": None}
+    if isinstance(row["data"], dict) and row["data"].get("format") == "hishab-encrypted-v1":
+        try:
+            payload = json.loads(cipher().decrypt(row["data"]["ciphertext"].encode()))
+            if payload["user_id"] != identity["user"]["id"]:
+                raise ValueError("Wrong account")
+            row = row | {"data": payload["workspace"]}
+            identity["workspace_encrypted"] = True
+        except (InvalidToken, ValueError, KeyError, TypeError):
+            raise HTTPException(503, "Cloud records cannot be decrypted. Restore the original server encryption key.") from None
+    return row
 
 
 def save_workspace(data, expected_revision):
-    return call("POST", "/rest/v1/rpc/save_hishab_workspace", user()["access_token"], {"expected_revision": expected_revision, "workspace_data": data})
+    identity = user()
+    if os.getenv("HISHAB_ENCRYPT_WORKSPACES", "false").lower() == "true" or identity.get("workspace_encrypted"):
+        payload = {"user_id": identity["user"]["id"], "workspace": data}
+        data = {"format": "hishab-encrypted-v1", "ciphertext": cipher().encrypt(json.dumps(payload, ensure_ascii=False).encode()).decode()}
+    return call("POST", "/rest/v1/rpc/save_hishab_workspace", identity["access_token"], {"expected_revision": expected_revision, "workspace_data": data})
 
 
 def read_ai_configs():

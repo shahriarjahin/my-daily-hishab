@@ -78,10 +78,20 @@ export function EntrySheet({
         }}
       >
         <label className="pad-value">
-          <span>৳</span>
+          <span>
+            {
+              new Intl.NumberFormat("en", {
+                style: "currency",
+                currency: s!.settings.currency || "BDT",
+                currencyDisplay: "narrowSymbol",
+              })
+                .formatToParts(0)
+                .find((x) => x.type === "currency")?.value
+            }
+          </span>
           <input
             name="amount"
-            aria-label={t("Amount in taka")}
+            aria-label={t("Amount")}
             inputMode="decimal"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
@@ -89,16 +99,18 @@ export function EntrySheet({
             required
           />
         </label>
-        <div className="entry-assists">
-          <button type="button" onClick={smart}>
-            <Icon name="history" />
-            {t("Scan receipt")}
-          </button>
-          <button type="button" onClick={smart}>
-            <Icon name="spark" />
-            {t("Type with AI")}
-          </button>
-        </div>
+        {s!.settings.ai_enabled && (
+          <div className="entry-assists">
+            <button type="button" onClick={smart}>
+              <Icon name="history" />
+              {t("Scan receipt")}
+            </button>
+            <button type="button" onClick={smart}>
+              <Icon name="spark" />
+              {t("Type with AI")}
+            </button>
+          </div>
+        )}
         <span className="modern-label">{t("Category")}</span>
         <div className="pad-categories">
           {categories.slice(0, 6).map((c) => (

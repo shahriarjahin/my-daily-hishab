@@ -146,6 +146,7 @@ class LedgerTests(unittest.TestCase):
         self.assertEqual(next(t for t in state["transactions"] if t["description"] == "Legacy tea")["wallet_id"], 1)
 
     def test_extraction_does_not_persist_and_errors_hide_secrets(self):
+        self.client.patch("/api/settings", json={"ai_enabled": True})
         import json
         from backend.ai import ProviderError
         def success(prompt, text, validator):

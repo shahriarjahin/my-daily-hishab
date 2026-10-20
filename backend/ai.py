@@ -176,6 +176,13 @@ def call_provider(config, prompt, text, timeout):
     return result["choices"][0]["message"]["content"]
 
 
+def require_enabled(session):
+    from .models import AppSetting
+    from fastapi import HTTPException
+    if not (session.get(AppSetting, 1) or AppSetting()).ai_enabled:
+        raise HTTPException(403, "Enable AI in Settings first.")
+
+
 def extract(prompt, text, validator):
     """Try each connected provider once. Validate before accepting any result."""
     failures = []

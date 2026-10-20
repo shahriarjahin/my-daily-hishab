@@ -132,6 +132,7 @@ class FinanceTests(unittest.TestCase):
         self.assertEqual(p['groups'][0]['spent'], 70)
 
     def test_ai_previews_never_apply_plan_or_transactions(self):
+        self.client.patch("/api/settings", headers=self.headers, json={"ai_enabled": True})
         def suggest(prompt, text, validator):
             return validator({'monthly_budget': 1000, 'planned_income': 1500, 'savings_target': 500,
                 'needs_percent': 50, 'wants_percent': 30, 'savings_percent': 20,
@@ -170,6 +171,7 @@ class FinanceTests(unittest.TestCase):
             validate_workspace(raw)
 
     def test_receipt_rejects_non_image_and_is_preview_only(self):
+        self.client.patch("/api/settings", headers=self.headers, json={"ai_enabled": True})
         result = self.post('/extract', {'text': 'Receipt', 'mode': 'transactions', 'image': base64.b64encode(b'<svg>invalid image</svg>').decode()})
         self.assertEqual(result.status_code, 422)
         def extract(prompt, text, validator):

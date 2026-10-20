@@ -93,9 +93,11 @@ export function Budgets({
         <Button secondary onClick={() => edit(forms.plan())}>
           {t("Monthly plan")}
         </Button>
-        <Button secondary onClick={autoPlan}>
-          {t("Auto-plan")}
-        </Button>
+        {s!.settings.ai_enabled && (
+          <Button secondary onClick={autoPlan}>
+            {t("Auto-plan")}
+          </Button>
+        )}
       </div>
       <details className="modern-plan-details">
         <summary>

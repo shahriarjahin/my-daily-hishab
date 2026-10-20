@@ -12,14 +12,30 @@ import { Wealth } from "./screens/Wealth";
 import { Advisor, Importer, AutoPlan } from "./screens/AI";
 import { SettingsScreen } from "./screens/Settings";
 import type { Route } from "./types";
+import { PasswordForm } from "./components/PasswordForm";
 import { LoadingScreen } from "./components/LoadingScreen";
 function Auth() {
   const { refresh, t } = useStore(),
-    [mode, setMode] = useState("login"),
+    [mode, setMode] = useState(
+      new URLSearchParams(location.search).has("forgot")
+        ? "forgot-password"
+        : "login",
+    ),
     [email, setEmail] = useState(""),
     [password, setPassword] = useState(""),
     [working, setWorking] = useState(false),
-    [error, setError] = useState("");
+    [error, setError] = useState(
+      new URLSearchParams(location.search).has("auth_error")
+        ? "Sign-in link expired. Please try again."
+        : "",
+    ),
+    [providers, setProviders] = useState<string[]>([]);
+  useEffect(() => {
+    if (!native)
+      void api<{ providers: string[] }>("/auth/providers")
+        .then((x) => setProviders(x.providers))
+        .catch(() => {});
+  }, []);
   return (
     <main className="auth-main">
       <div className="auth-layout">
@@ -45,7 +61,15 @@ function Auth() {
             <img src="/static/hishab-logo-v2.png" alt="Hishab logo" />
             <span>Hishab</span>
           </div>
-          <h2>{t(mode === "login" ? "Sign in" : "Create account")}</h2>
+          <h2>
+            {t(
+              mode === "forgot-password"
+                ? "Reset password"
+                : mode === "login"
+                  ? "Sign in"
+                  : "Create account",
+            )}
+          </h2>
           <div className="modern-segment auth-tabs">
             {[
               ["login", "Sign in"],
@@ -68,13 +92,16 @@ function Auth() {
             id="auth-form"
             onSubmit={async (e) => {
               e.preventDefault();
+              if (native && mode === "forgot-password") {
+                try { await device("forgot-password"); } catch(e) {setError((e as Error).message);} return;
+              }
               setWorking(true);
               setError("");
               try {
                 const result = await api<{
                   signed_in: boolean;
                   message?: string;
-                }>("/auth/" + mode, "POST", { email, password });
+                }>("/auth/" + mode, "POST", mode === "forgot-password" ? { email } : { email, password });
                 setPassword("");
                 if (result.signed_in) await refresh();
                 else
@@ -101,28 +128,62 @@ function Auth() {
                 onChange={(e) => setEmail(e.target.value)}
               />
             </label>
-            <label className="form-field section-gap">
-              {t("Password")}
-              <input
-                name="password"
-                type="password"
-                autoComplete={
-                  mode === "signup" ? "new-password" : "current-password"
-                }
-                minLength={6}
-                maxLength={1024}
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </label>
+            {mode !== "forgot-password" && (
+              <label className="form-field section-gap">
+                {t("Password")}
+                <input
+                  name="password"
+                  type="password"
+                  autoComplete={
+                    mode === "signup" ? "new-password" : "current-password"
+                  }
+                  minLength={6}
+                  maxLength={1024}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </label>
+            )}
             <ErrorMessage message={error} />
             <Button type="submit" disabled={working}>
               {working
                 ? t("Working…")
-                : t(mode === "login" ? "Sign in" : "Create account")}
+                : t(
+                    mode === "forgot-password"
+                      ? "Reset password"
+                      : mode === "login"
+                        ? "Sign in"
+                        : "Create account",
+                  )}
             </Button>
           </form>
+          <button
+            className="text-button section-gap"
+            onClick={() => {
+              setMode(mode === "forgot-password" ? "login" : "forgot-password");
+              setError("");
+            }}
+          >
+            {t(
+              mode === "forgot-password"
+                ? "Back to sign in"
+                : "Forgot password?",
+            )}
+          </button>
+          {providers.map((provider) => (
+            <a
+              className="secondary-button oauth-button"
+              key={provider}
+              href={"/api/auth/oauth/" + provider}
+            >
+              {t(
+                provider === "google"
+                  ? "Continue with Google"
+                  : "Continue with GitHub",
+              )}
+            </a>
+          ))}
           <p className="form-hint">
             {t(
               native
@@ -215,8 +276,32 @@ export default function App() {
           : route === "hub"
             ? "hub"
             : "home";
+  const navOptions: [Route, string, string][] = [
+    ["wallets", "Wallets", "wallet"],
+    ["budgets", "Budgets", "wallet"],
+    ["goals", "Goals", "savings"],
+    ["regulars", "Regulars", "utilities"],
+    ["loans", "Loans", "business"],
+    ["more", "More", "other"],
+    ["hub", "Ask", "spark"],
+  ];
+  const fifth =
+    navOptions.find(
+      (x) =>
+        x[0] === s.settings.bottom_nav &&
+        (x[0] !== "hub" || s.settings.ai_enabled),
+    ) || navOptions[0];
   let content;
   switch (route) {
+    case "password":
+      content = (
+        <PasswordForm
+          recovery={
+            new URLSearchParams(location.search).get("recovery") === "1"
+          }
+        />
+      );
+      break;
     case "home":
       content = (
         <Dashboard edit={setForm} add={() => setSheet(true)} remove={remove} />
@@ -250,6 +335,7 @@ export default function App() {
     case "categories":
       content = <Wealth edit={setForm} remove={remove} />;
       break;
+    case "general":
     case "settings":
     case "connections":
     case "data":
@@ -270,21 +356,40 @@ export default function App() {
                 ["regulars", "Regulars", "utilities"],
                 ["parser", "Import", "history"],
               ] as [Route, string, string][]
-            ).map(([r, label, i]) => (
-              <button
-                className="destination-card"
-                key={r}
-                onClick={() => navigate(r)}
-              >
-                <Icon name={i} />
-                <strong>{t(label)}</strong>
-                <Icon name="arrow" />
-              </button>
-            ))}
+            )
+              .filter(
+                ([r]) =>
+                  s.settings.ai_enabled || !["hub", "parser"].includes(r),
+              )
+              .map(([r, label, i]) => (
+                <button
+                  className="destination-card"
+                  key={r}
+                  onClick={() => navigate(r)}
+                >
+                  <Icon name={i} />
+                  <strong>{t(label)}</strong>
+                  <Icon name="arrow" />
+                </button>
+              ))}
           </div>
         </>
       );
   }
+  if (
+    !s.settings.ai_enabled &&
+    ["hub", "parser", "connections"].includes(route)
+  )
+    content = (
+      <>
+        <Title>{t("AI")}</Title>
+        <Card>
+          <Button onClick={() => navigate("settings")}>
+            {t("Enable AI in Settings")}
+          </Button>
+        </Card>
+      </>
+    );
   return (
     <>
       <div className="app-shell">
@@ -298,17 +403,19 @@ export default function App() {
             <span>hishab.</span>
           </a>
           <nav aria-label={t("Main navigation")}>
-            {links.map(([r, label, i]) => (
-              <a
-                href={"#" + r}
-                key={r}
-                className={"nav-item " + (route === r ? "active" : "")}
-                aria-current={route === r ? "page" : undefined}
-              >
-                <Icon name={i} />
-                <span>{t(label)}</span>
-              </a>
-            ))}
+            {links
+              .filter(([r]) => s.settings.ai_enabled || r !== "hub")
+              .map(([r, label, i]) => (
+                <a
+                  href={"#" + r}
+                  key={r}
+                  className={"nav-item " + (route === r ? "active" : "")}
+                  aria-current={route === r ? "page" : undefined}
+                >
+                  <Icon name={i} />
+                  <span>{t(label)}</span>
+                </a>
+              ))}
           </nav>
           <div className="sidebar-footer">
             <span className="status-dot" />
@@ -316,7 +423,7 @@ export default function App() {
           </div>
         </aside>
         <div className="workspace">
-          <main id="main" key={route}>
+          <main id="main" data-route={route} key={route}>
             {error && <ErrorMessage message={error} />} {content}
           </main>
         </div>
@@ -328,8 +435,8 @@ export default function App() {
             ["history", "Activity", "history"],
             ["add", "", "plus"],
             ["insights", "Insights", "insights"],
-            ["hub", "Ask", "spark"],
-          ] as const
+            fifth,
+          ] as [string, string, string][]
         ).map(([r, label, i]) =>
           r === "add" ? (
             <button
@@ -344,8 +451,14 @@ export default function App() {
             <a
               key={r}
               href={"#" + r}
-              className={"nav-item " + (active === r ? "active" : "")}
-              aria-current={active === r ? "page" : undefined}
+              className={
+                "nav-item " +
+                (route === r ||
+                (r === "home" && active === "home" && route !== fifth[0])
+                  ? "active"
+                  : "")
+              }
+              aria-current={route === r ? "page" : undefined}
             >
               <Icon name={i} />
               <span>{t(label)}</span>

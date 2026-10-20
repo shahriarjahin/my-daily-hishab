@@ -278,7 +278,7 @@ export function Dashboard({
                 ["loans", "Loans", "business"],
                 ["parser", "Import", "history"],
               ] as const
-            ).map(([route, label, icon]) => (
+            ).filter(([route])=>s!.settings.ai_enabled || route !== "parser").map(([route, label, icon]) => (
               <button key={route} onClick={() => navigate(route)}>
                 <Icon name={icon} />
                 <span>{t(label)}</span>
@@ -323,9 +323,14 @@ export function Dashboard({
             <button className="primary-button" onClick={add}>
               {t("Add entry")}
             </button>
-            <button className="text-button" onClick={() => navigate("parser")}>
-              <Icon name="spark" /> {t("Type with AI")}
-            </button>
+            {s!.settings.ai_enabled && (
+              <button
+                className="text-button"
+                onClick={() => navigate("parser")}
+              >
+                <Icon name="spark" /> {t("Type with AI")}
+              </button>
+            )}
           </Card>
           <section className="modern-recent">
             <div className="section-title">

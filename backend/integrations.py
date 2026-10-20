@@ -104,6 +104,7 @@ def balance_preview(session, item):
 
 @router.post("/extract")
 def extract_entries(body: ExtractInput, session: Session = Depends(get_session)):
+    ai.require_enabled(session)
     if not body.text.strip():
         raise HTTPException(422, "Describe a transaction or wallet balance first.")
     wallets = session.exec(select(Wallet).order_by(Wallet.id)).all()
@@ -120,7 +121,7 @@ def extract_entries(body: ExtractInput, session: Session = Depends(get_session))
         "wallets [{name:Cash,balance:1000},{name:Bank,balance:2500}], transactions []. "
         "Never mistake a balance statement for receiving or spending money. "
         "transactions items: {description:string,amount:number,category:string,type:income|expense,wallet_id:integer}. "
-        f"Use {'Bangla' if (session.get(AppSetting, 1) or AppSetting()).language == 'bn' else 'English'} descriptions. Expand 5k, hajar, lakh and Bangla numbers to BDT numbers. "
+        f"Use {'Bangla' if (session.get(AppSetting, 1) or AppSetting()).language == 'bn' else 'English'} descriptions. Expand 5k, hajar, lakh and Bangla numbers to numbers in the selected account currency. "
         "Never invent transactions, double-count totals or repeat a wallet. "
         "If an expense explicitly states quantity and unit, include quantity:number and unit:string. Never guess quantities. "
         "If there is no actual financial fact, return both arrays empty. "
@@ -202,8 +203,10 @@ def login(body: AuthInput, response: Response):
 
 
 @router.post("/auth/signup")
-def signup(body: AuthInput, response: Response):
-    data = cloud.call("POST", "/auth/v1/signup", body={"email": body.email.strip(), "password": body.password.get_secret_value()})
+def signup(body: AuthInput, response: Response, request: Request):
+    from .auth import app_origin
+    from urllib.parse import urlencode
+    data = cloud.call("POST", "/auth/v1/signup?" + urlencode({"redirect_to": app_origin(request) + "/auth/callback"}), body={"email": body.email.strip(), "password": body.password.get_secret_value()})
     if data.get("access_token"):
         cloud.set_cookie(response, cloud.token_data(data))
     return {"signed_in": bool(data.get("access_token")), "message": "You can sign in now." if data.get("access_token") else "Check your email to confirm your account, then sign in."}
@@ -271,3 +274,20 @@ def import_previous_records(body: ImportInput, session: Session = Depends(get_se
 @router.get("/health")
 def health():
     return {"status": "ok", "cloud_mode": cloud.cloud_mode()}
+
+
+@router.get("/cloud/workspace")
+def pull_workspace():
+    return cloud.read_workspace()
+
+
+@router.post("/cloud/workspace")
+def push_workspace(body: ImportInput):
+    current = cloud.read_workspace()
+    if current["revision"] != body.expected_revision:
+        raise HTTPException(409, "Your cloud workspace changed. Reload before importing.")
+    try:
+        data = validate_workspace(body.data)
+    except ValueError:
+        raise HTTPException(422, "Invalid workspace. Cloud records were not changed.") from None
+    return {"revision": cloud.save_workspace(data, body.expected_revision)}

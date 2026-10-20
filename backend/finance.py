@@ -134,6 +134,16 @@ def edit_category(category_id: int, body: CategoryInput, session: Session = Depe
     return {"saved": True}
 
 
+@router.delete("/categories/{category_id}")
+def delete_category(category_id: int, session: Session = Depends(get_session)):
+    category = require_row(session, Category, category_id)
+    if any(r.category == category.name for model in (Transaction, Budget, Saving, Regular) for r in rows(session, model)):
+        raise HTTPException(409, "This category is in use. Archive it instead.")
+    session.delete(category)
+    session.commit()
+    return {"saved": True}
+
+
 class PlanInput(Input):
     monthly_budget: float = 0
     planned_income: float = 0
@@ -306,6 +316,27 @@ def add_saving(body: SavingInput, session: Session = Depends(get_session)):
     return {"saved": True}
 
 
+@router.put("/savings/{saving_id}")
+def edit_saving(saving_id: int, body: SavingInput, session: Session = Depends(get_session)):
+    saving = require_row(session, Saving, saving_id)
+    ensure_category(session, body.category)
+    cat = session.exec(select(Category).where(Category.name == body.category)).first()
+    if cat.bucket != "savings":
+        raise HTTPException(422, "Choose a savings category.")
+    ensure_wallet(session, body.wallet_id)
+    # Exclude this reservation when checking the revised reservation.
+    available = total([wallet_balance(session, body.wallet_id), -sum(s.amount for s in rows(session, Saving) if s.wallet_id == body.wallet_id and s.id != saving_id)])
+    if body.amount > available:
+        raise HTTPException(422, "This wallet has insufficient unreserved money. Release savings or choose another wallet.")
+    if body.goal_id:
+        require_row(session, Goal, body.goal_id)
+    for key, value in body.model_dump().items():
+        setattr(saving, key, value)
+    session.add(saving)
+    session.commit()
+    return {"saved": True}
+
+
 @router.delete("/savings/{saving_id}")
 def release_saving(saving_id: int, session: Session = Depends(get_session)):
     session.delete(require_row(session, Saving, saving_id))
@@ -427,7 +458,7 @@ class AIQuestion(Input):
 
 def ai_context(session):
     state = finance_state(session)
-    return {"today": now().date().isoformat(), "language": (session.get(AppSetting, 1) or AppSetting()).language, "planning": state["planning"],
+    return {"currency": (session.get(AppSetting, 1) or AppSetting()).currency, "today": now().date().isoformat(), "language": (session.get(AppSetting, 1) or AppSetting()).language, "planning": state["planning"],
         "categories": state["category_details"], "budgets": [b.model_dump() for b in rows(session, Budget)],
         "wallets": [{"name": w.name, "balance": wallet_balance(session, w.id)} for w in rows(session, Wallet)],
         "monthly_category_spend": {c.name: total(t.amount for t in rows(session, Transaction) if t.type == "expense" and t.category == c.name and local_date(t.date).strftime("%Y-%m") == now().strftime("%Y-%m")) for c in rows(session, Category)},
@@ -445,6 +476,7 @@ def ask_ai(prompt, message, validator):
 @router.post("/advisor")
 def advisor(body: AIQuestion, session: Session = Depends(get_session)):
     from . import ai
+    ai.require_enabled(session)
     context = ai_context(session)
     context["conversation"] = [{"role": m.role, "content": m.content} for m in rows(session, AdvisorMessage)[-8:]]
     prompt = ("You are a practical budget coach for a Bangladeshi expense tracker. Return JSON {answer:string}. "
@@ -478,7 +510,8 @@ def clear_advisor(session: Session = Depends(get_session)):
 @router.post("/plan/preview")
 def auto_plan(body: AIQuestion, session: Session = Depends(get_session)):
     from . import ai
-    prompt = ("Create a feasible monthly budget in BDT from these account facts and the user's instructions. "
+    ai.require_enabled(session)
+    prompt = ("Create a feasible monthly budget in the account currency from these account facts and the user's instructions. "
         "Return JSON {monthly_budget:number,planned_income:number,savings_target:number,needs_percent:50,wants_percent:30,savings_percent:20,"
         "allocations:[{category:string,amount:number}],summary:string}. Use only active expense categories (needs/wants). "
         "Write summary in Bangla when account language is bn, otherwise English. Amounts positive with max two decimals; allocations <= monthly_budget, budget+savings <= planned_income. "

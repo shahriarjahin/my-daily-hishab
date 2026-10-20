@@ -313,3 +313,96 @@ button:focus-visible {
     padding-bottom: calc(105px + env(safe-area-inset-bottom));
   }
 }
+
+.settings-profile {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+  margin-bottom: 20px;
+}
+.settings-profile .form-field {
+  margin: 0;
+  min-width: 0;
+}
+.settings-profile input {
+  width: 100%;
+  box-sizing: border-box;
+}
+.settings-profile button {
+  margin: 0;
+  min-height: 48px;
+}
+.account-password {
+  display: grid;
+  gap: 18px;
+}
+.developer-person {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0;
+}
+.developer-person img {
+  border-radius: 50%;
+  object-fit: cover;
+}
+.developer-person h3 {
+  margin: 0;
+}
+.digitxbd-credit-logo {
+  max-width: 110px;
+  max-height: 44px;
+  object-fit: contain;
+}
+.credit-links {
+  align-items: center;
+}
+.minimal-quick .primary-button {
+  display: block;
+  width: 100%;
+  margin-bottom: 14px;
+}
+.minimal-quick .text-button {
+  margin-top: 12px;
+}
+.balance-mini > .text-button {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.category-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.category-actions > .icon-button {
+  width: 40px;
+  height: 40px;
+}
+.oauth-button {
+  display: block;
+  text-align: center;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+.settings-row select {
+  max-width: 60%;
+}
+
+.wallet-actions{display:grid;gap:14px;margin:0 0 28px}.wallet-actions button{text-align:left}.wallet-create-action{display:flex;align-items:center;gap:14px;padding:20px;border:1px solid var(--line);background:var(--text);color:var(--bg);border-radius:20px}.wallet-create-action>span:nth-child(2){display:grid;gap:5px}.wallet-create-action>svg{margin-left:auto;width:20px}.wallet-actions strong{font-size:16px;font-weight:600}.wallet-actions small{font-size:12px;opacity:.72}.wallet-action-icon{width:40px;height:40px;display:grid;place-items:center;flex-shrink:0;border-radius:12px;background:color-mix(in srgb,currentColor 10%,transparent)}.wallet-action-icon svg{width:22px;height:22px}.wallet-tools{display:grid;grid-template-columns:1fr 1fr;gap:14px}.wallet-tools button{display:grid;justify-items:start;gap:9px;padding:18px;border:1px solid var(--line);border-radius:20px;background:var(--panel);color:var(--text)}.wallet-transfer-action .wallet-action-icon{color:#339bae;background:#339bae18}.wallet-loans-action .wallet-action-icon{color:#c48e2c;background:#c48e2c18}.wallet-tools small{line-height:1.4}.wallet-ai-action{justify-self:start;display:inline-flex;align-items:center;gap:8px}.wallet-ai-action svg{width:18px}.wallet-actions button:focus-visible{outline:2px solid #e4a52f;outline-offset:3px}
+
+.account-session{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}.account-session>.muted{overflow-wrap:anywhere;min-width:0}.account-buttons{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+
+.account-card{display:grid;gap:22px}.account-identity{display:flex;align-items:center;gap:14px;min-width:0}.account-identity>div{min-width:0}.account-identity h2{margin:0 0 5px;overflow-wrap:anywhere}.account-identity p{margin:0;overflow-wrap:anywhere;font-size:13px}.account-avatar{display:grid;place-items:center;width:48px;height:48px;flex-shrink:0;border-radius:50%;font-size:21px;font-weight:600;background:color-mix(in srgb,var(--accent) 18%,var(--panel));color:var(--text)}.account-card .account-buttons{padding-top:18px;border-top:1px solid var(--line)}
+
+.developer-credit{padding:16px 18px!important}.developer-credit>small{font-size:10px}.developer-credit .developer-person{gap:9px;margin:8px 0}.developer-credit .developer-person img{width:28px;height:28px}.developer-credit .developer-person h3{font-size:14px;line-height:1.4}.developer-credit .credit-links{margin-top:8px;gap:14px;font-size:12px}.developer-credit .digitxbd-credit-logo{max-width:80px;max-height:28px}
+
+.account-card .settings-profile{margin-bottom:0}.account-card .account-buttons{padding-top:16px}
+
+.account-name-edit{margin-left:auto;flex-shrink:0;display:grid;place-items:center;width:40px;height:40px}.account-name-edit svg{width:19px;height:19px}
+
+.account-name-details{flex:1}.account-name-inline{display:block;width:100%;min-width:0;box-sizing:border-box;border:0;border-bottom:1px solid var(--accent);border-radius:0;background:transparent;padding:0 0 4px;margin:0 0 5px;font:inherit;font-size:17px;font-weight:600;line-height:1.4;color:var(--text);box-shadow:none}.account-name-inline:focus{outline:0;box-shadow:0 1px 0 var(--accent)}
+
+.account-buttons .account-signout{margin-left:auto;color:var(--red);border-color:color-mix(in srgb,var(--red) 45%,var(--line));background:color-mix(in srgb,var(--red) 9%,var(--panel))}.account-buttons .account-signout:hover{background:color-mix(in srgb,var(--red) 16%,var(--panel))}

@@ -145,7 +145,7 @@ export function Activity({
             aria-label={t("Filters")}
             onClick={() => setAdvanced(!advanced)}
           >
-            <Icon name="settings" />
+            <Icon name="filter" />
           </button>
         </div>
         <div className="activity-options">

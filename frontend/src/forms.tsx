@@ -11,6 +11,7 @@ import type {
   Regular,
   Loan,
   Provider,
+  Saving,
 } from "./types";
 import { day, dated } from "./utils";
 import { Button, ErrorMessage, Modal } from "./components/UI";
@@ -291,15 +292,16 @@ export function formFactory(s: WorkspaceState) {
       ],
       prepare: (v) => ({ ...v, due_date: v.due_date || null }),
     }),
-    saving: (): FormSpec => ({
-      title: "Reserve savings",
-      path: "/savings",
+    saving: (existing?: Saving): FormSpec => ({
+      title: existing ? "Edit saving" : "Reserve savings",
+      path: "/savings" + (existing ? "/" + existing.id : ""),
+      method: existing ? "PUT" : "POST",
       values: {
-        amount: "",
-        category: saving[0],
-        wallet_id: s.wallets[0]?.id,
-        goal_id: "",
-        note: "",
+        amount: existing?.amount || "",
+        category: existing?.category || saving[0],
+        wallet_id: existing?.wallet_id || s.wallets[0]?.id,
+        goal_id: existing?.goal_id || "",
+        note: existing?.note || "",
       },
       fields: [
         amount(),
