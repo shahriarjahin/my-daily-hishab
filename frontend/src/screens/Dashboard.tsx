@@ -146,7 +146,7 @@ export function Dashboard({
   add: () => void;
   remove: (path: string, label: string) => void;
 }) {
-  const { state: s, money, t, navigate, refresh } = useStore(),
+  const { state: s, cloud, money, t, navigate, refresh } = useStore(),
     [period, setPeriod] = useState("month");
   const today = day(),
     start =
@@ -304,7 +304,7 @@ export function Dashboard({
             <button className="primary-button" onClick={add}>
               {t("Add entry")}
             </button>
-            {s!.settings.ai_enabled && (
+            {(s!.settings.ai_enabled || cloud?.offline_ai?.enabled) && (
               <button
                 className="text-button"
                 onClick={() => navigate("parser")}

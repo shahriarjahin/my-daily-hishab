@@ -93,7 +93,7 @@ Screenshots captured on iPhone by the developer, using the demo account. Select 
 - **Made for daily use:** BDT and popular currencies, Bangla/English, light, dark and glass themes.
 - **One account:** Supabase login and account-owned data across web and Android.
 - **Android choice:** use encrypted local storage without an account, or sign in for cloud sync. Offline and cloud workspaces stay separate.
-- **Optional AI:** enable it in Settings for English, Bangla or Banglish entry and editable import previews.
+- **Optional AI:** Android can extract BDT income and expenses on-device after a separate model download. Cloud providers remain available for other AI features. Every offline proposal is reviewed before saving.
 - **A guided start:** welcome-name setup, a skippable quick-start tutorial, and optional authenticator MFA and passkeys.
 - **A calmer start:** branded loading screen, reduced-motion support and placeholders during longer waits.
 
@@ -103,7 +103,7 @@ Screenshots captured on iPhone by the developer, using the demo account. Select 
 
 Requires **Android 8.0+**. Open the latest release and select the `.apk` asset. A SHA-256 checksum is included. To update, install over the existing app; do not uninstall first. Android asks for installation confirmation. You can also check for updates in the app's settings.
 
-Cloud sync uses the hosted Hishab backend. Optional AI also needs an internet connection and a configured provider. An iOS native build is not available yet.
+Cloud sync and cloud AI need an internet connection. For offline text entry, open **Settings → General & Appearance → Offline AI**, download the approximately **630 MB** model, then enable it. Requires a 64-bit device with at least 3 GB RAM and roughly 900 MB free storage. See the [offline AI guide](docs/OFFLINE_AI.md) for scope and limitations. An iOS native build is not available yet.
 
 ## Run locally
 

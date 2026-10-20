@@ -1,0 +1,10 @@
+{
+  "engine_commit": "781dbc5ac98921dbdb5e5b2ec5b7a50960e937d4",
+  "engine_archive_sha256": "7948653e18e4ab4d8d5a0f58f4fc8430cfcb4fb3c49880144d3c30a337206cb8",
+  "name": "Hishab Qwen 0.8B · Q6",
+  "model_url": "https://huggingface.co/ryuma007/hishab-qwen3.5-0.8b-json-full-v10-GGUF/resolve/cc3dabf020e45b9365605d5f2adb55b51333a3f0/qwen3.5-0.8b__json__full__v10-Q6_K.gguf",
+  "model_bytes": 629743680,
+  "model_sha256": "173d0d7580fb6bcf68df0e5ad5bb23c910d943b3a75ff11ae4b914ddb4402ed3",
+  "license": "Apache-2.0",
+  "source": "https://huggingface.co/ryuma007/hishab-qwen3.5-0.8b-json-full-v10-GGUF"
+}

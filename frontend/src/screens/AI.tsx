@@ -102,7 +102,7 @@ export function Advisor() {
   );
 }
 export function Importer() {
-  const { state: s, t, money, mutate, notify } = useStore(),
+  const { state: s, cloud, t, money, mutate, notify } = useStore(),
     [text, setText] = useState(""),
     [wallet, setWallet] = useState(s!.wallets[0]?.id || 0),
     [mode, setMode] = useState("auto"),
@@ -132,7 +132,11 @@ export function Importer() {
       });
       if (!output.wallets.length && !output.transactions.length)
         throw new Error("No financial entries found.");
-      if (!s!.settings.review_before_saving && !output.wallets.length) {
+      if (
+        output.provider !== "On-device AI" &&
+        !s!.settings.review_before_saving &&
+        !output.wallets.length
+      ) {
         await mutate("/transactions", "POST", {
           transactions: output.transactions,
         });
@@ -183,17 +187,23 @@ export function Importer() {
               <select value={mode} onChange={(e) => setMode(e.target.value)}>
                 <option value="auto">{t("Auto")}</option>
                 <option value="transactions">{t("Income / expense")}</option>
-                <option value="wallets">{t("Current wallet balances")}</option>
+                {!cloud?.offline_ai?.enabled && (
+                  <option value="wallets">
+                    {t("Current wallet balances")}
+                  </option>
+                )}
               </select>
             </label>
-            <label className="form-field wide">
-              {t("Scan receipt")}
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                onChange={(e) => setFile(e.target.files?.[0] || null)}
-              />
-            </label>
+            {!cloud?.offline_ai?.enabled && (
+              <label className="form-field wide">
+                {t("Scan receipt")}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={(e) => setFile(e.target.files?.[0] || null)}
+                />
+              </label>
+            )}
           </div>
           <ErrorMessage message={error} />
           <Button type="submit" disabled={working}>
@@ -201,8 +211,17 @@ export function Importer() {
           </Button>
           <p className="form-hint">
             {t("Review before saving")}:{" "}
-            {t(s!.settings.review_before_saving ? "On" : "Off")} ·{" "}
-            {t("AI providers receive your text or receipt.")}
+            {t(
+              cloud?.offline_ai?.enabled || s!.settings.review_before_saving
+                ? "On"
+                : "Off",
+            )}{" "}
+            ·{" "}
+            {t(
+              cloud?.offline_ai?.enabled
+                ? "Text stays on this phone. Review wallet, category and amount before saving."
+                : "AI providers receive your text or receipt.",
+            )}
           </p>
         </form>
       </Card>

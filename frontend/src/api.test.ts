@@ -15,6 +15,43 @@ beforeEach(() => {
   platform.execute.mockReset();
 });
 describe("React transport boundaries", () => {
+  it("uses only the native model for offline extraction without saving or contacting providers", async () => {
+    platform.native = true;
+    const workspace = structuredClone(seed);
+    workspace.settings.ai_enabled = false;
+    platform.execute.mockImplementation(async ({ op, body }) => {
+      if (op === "offline-ai")
+        return {
+          data:
+            body.action === "generate"
+              ? {
+                  raw: '[{"description":"Lunch","amount":250,"category":"food","type":"expense"}]',
+                }
+              : { enabled: true, ready: true },
+        };
+      if (op === "load") return { data: { workspace, seq: 1 } };
+      throw new Error("Unexpected network request or write");
+    });
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
+    const { api } = await import("./api");
+    const result = await api<any>("/extract", "POST", {
+      text: "Lunch 250",
+      wallet_id: 2,
+      mode: "transactions",
+    });
+    expect(result.transactions[0]).toMatchObject({
+      amount: 250,
+      wallet_id: 2,
+      category: "Food",
+    });
+    expect(fetch).not.toHaveBeenCalled();
+    expect(platform.execute.mock.calls.map((c) => c[0].op)).toEqual([
+      "offline-ai",
+      "load",
+      "offline-ai",
+    ]);
+  });
   it("uses same-origin cookies and the latest server revision without exposing tokens", async () => {
     const fetch = vi
       .fn()
@@ -46,14 +83,12 @@ describe("React transport boundaries", () => {
   it("preserves conflict errors so the UI can reload instead of overwriting", async () => {
     vi.stubGlobal(
       "fetch",
-      vi
-        .fn()
-        .mockResolvedValue(
-          new Response(JSON.stringify({ detail: "Workspace changed" }), {
-            status: 409,
-            headers: { "Content-Type": "application/json" },
-          }),
-        ),
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ detail: "Workspace changed" }), {
+          status: 409,
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
     );
     const { api, ApiError } = await import("./api");
     await expect(api("/transactions", "POST", {})).rejects.toMatchObject({

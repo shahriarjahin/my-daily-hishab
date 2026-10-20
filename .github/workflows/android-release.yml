@@ -31,6 +31,8 @@ jobs:
         run: pip install -r requirements.txt
       - name: Install React and Capacitor dependencies
         run: npm ci --prefix frontend
+      - name: Install native inference build tools
+        run: sdkmanager "ndk;28.2.13676358" "cmake;3.22.1"
       - name: Validate React transport
         run: npm test --prefix frontend
       - name: Validate the offline ledger

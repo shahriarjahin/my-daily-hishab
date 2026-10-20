@@ -12,6 +12,13 @@ public final class HishabPlugin extends Plugin {
     @PluginMethod public void execute(PluginCall call){
         String op=call.getString("op","");JSONObject body=call.getObject("body",new JSObject());
         if(body.toString().length()>9000000){call.reject("Request is too large.");return;}
+        if(op.equals("offline-ai")){
+            try{OfflineAi ai=OfflineAi.get(getContext());String action=body.optString("action","status");
+                if(action.equals("cancel")){ai.cancel();call.resolve(new JSObject().put("data",true));return;}
+                if(action.equals("status")){call.resolve(new JSObject().put("data",ai.status()));return;}
+                ai.worker.execute(()->{try{call.resolve(new JSObject().put("data",ai.call(body)));}catch(Exception e){call.reject(e.getMessage()==null?"Offline AI failed.":e.getMessage());}});
+            }catch(Throwable e){call.reject("Offline AI is unavailable on this device.");}return;
+        }
         if(op.equals("passkey")){Passkeys.begin(this,call,body.optBoolean("registration"));return;}
         if(op.equals("exit")){getActivity().runOnUiThread(()->{getActivity().moveTaskToBack(true);call.resolve(new JSObject().put("data",true));});return;}
         if(op.equals("updates")){getActivity().runOnUiThread(()->{try{MainActivity activity=(MainActivity)getActivity();if(body.has("automatic"))activity.updater.setAutomatic(body.getBoolean("automatic"));if(body.optBoolean("check"))activity.updater.check(true);call.resolve(new JSObject().put("data",new JSONObject().put("automatic",activity.updater.automatic()).put("version",getContext().getPackageManager().getPackageInfo(getContext().getPackageName(),0).versionName)));}catch(Exception e){call.reject("Could not check app updates.");}});return;}

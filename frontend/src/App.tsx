@@ -451,7 +451,9 @@ export default function App() {
             )
               .filter(
                 ([r]) =>
-                  s.settings.ai_enabled || !["hub", "parser"].includes(r),
+                  s.settings.ai_enabled ||
+                  (r === "parser" && cloud?.offline_ai?.enabled) ||
+                  !["hub", "parser"].includes(r),
               )
               .map(([r, label, i]) => (
                 <button
@@ -470,6 +472,7 @@ export default function App() {
   }
   if (
     !s.settings.ai_enabled &&
+    !(route === "parser" && cloud?.offline_ai?.enabled) &&
     ["hub", "parser", "connections"].includes(route)
   )
     content = (

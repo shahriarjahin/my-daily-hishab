@@ -9,9 +9,9 @@ import org.json.JSONObject;
 
 /** Device tests use synthetic isolated accounts and never make cloud requests. */
 public final class DatabaseChecks extends Instrumentation {
-    int checks=0;boolean expectUpgrade=false;
+    int checks=0;boolean expectUpgrade=false;boolean offlineAi=false;
     void check(boolean condition,String message){if(!condition)throw new AssertionError(message);checks++;}
-    @Override public void onCreate(Bundle arguments){super.onCreate(arguments);expectUpgrade="true".equals(arguments.getString("upgrade"));start();}
+    @Override public void onCreate(Bundle arguments){super.onCreate(arguments);expectUpgrade="true".equals(arguments.getString("upgrade"));offlineAi="true".equals(arguments.getString("offlineAi"));start();}
     @Override public void onStart(){Bundle report=new Bundle();Store store=null;
         try{
             check(AppUpdater.compareVersions("1.1.0","1.0.2")>0,"New minor update detected");
@@ -77,7 +77,36 @@ public final class DatabaseChecks extends Instrumentation {
             }
             check(loginReady,"React UI, Capacitor transport and sign-in controls must load");
             check(activity.getBridge().getPlugin("Hishab")!=null,"Typed Capacitor plugin registered");
-            report.putString("stream","PASS: "+checks+" native database checks\n");finish(RESULT_OK,report);
+            if(offlineAi){
+                java.io.File source=new java.io.File(getTargetContext().getExternalFilesDir(null),"offline-test-model.gguf");
+                check(source.isFile(),"Synthetic test model is available");
+                JSONObject cfg;try(java.io.InputStream in=getTargetContext().getAssets().open("offline-ai.json")){cfg=new JSONObject(Runtime.read(in));}
+                java.security.MessageDigest hash=java.security.MessageDigest.getInstance("SHA-256");
+                try(java.io.InputStream in=new java.io.FileInputStream(source)){byte[] bytes=new byte[65536];int n;while((n=in.read(bytes))!=-1)hash.update(bytes,0,n);}
+                StringBuilder digest=new StringBuilder();for(byte v:hash.digest())digest.append(String.format("%02x",v&255));
+                check(digest.toString().equals(cfg.getString("model_sha256")),"Test model checksum verified");
+                java.io.File dir=new java.io.File(getTargetContext().getNoBackupFilesDir(),"offline-ai");dir.mkdirs();java.io.File destination=new java.io.File(dir,"finance-q6.gguf");
+                java.nio.file.Files.copy(source.toPath(),destination.toPath(),java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                getTargetContext().getSharedPreferences("hishab-offline-ai",0).edit().putString("installed_sha",cfg.getString("model_sha256")).putBoolean("enabled",false).commit();
+                OfflineAi ai=OfflineAi.get(getTargetContext());check(ai.status().getBoolean("ready")&&!ai.status().getBoolean("enabled"),"Offline model remains optional");
+                ai.call(new JSONObject().put("action","enable").put("enabled",true));runtime.call("offline",new JSONObject().put("name","Offline AI tester"));
+                long before=runtime.store.load(runtime.user()).getLong("seq");
+                for(String text:new String[]{"Lunch 250 tk","70 tk cash paisi","চা ২০ টাকা"}){
+                    long began=System.currentTimeMillis();
+                    String raw=((JSONObject)ai.call(new JSONObject().put("action","generate").put("text",text))).getString("raw");
+                    org.json.JSONArray output=new org.json.JSONArray(raw.trim());check(output.length()==1,"Native inference returns a transaction");
+                    double expected=text.startsWith("Lunch")?250:text.startsWith("70")?70:20;
+                    check(output.getJSONObject(0).getDouble("amount")==expected,"English/Banglish/Bangla amount parsed offline");
+                    check(output.getJSONObject(0).getString("type").equals(text.startsWith("70")?"income":"expense"),"Native model distinguishes income and expense");
+                    report.putString("stream",report.getString("stream","")+"Offline sample: "+expected+" in "+(System.currentTimeMillis()-began)+" ms\n");
+                }
+                check(runtime.store.load(runtime.user()).getLong("seq")==before,"Inference never saves ledger records");
+                ai.call(new JSONObject().put("action","enable").put("enabled",false));check(!ai.status().getBoolean("enabled"),"Offline AI can be disabled");
+                ai.call(new JSONObject().put("action","remove"));check(!ai.status().getBoolean("ready"),"Model removal clears downloaded weights");
+                check(runtime.store.load(runtime.user()).getLong("seq")==before,"Model removal preserves financial records");
+                runtime.call("logout",new JSONObject());
+            }
+            report.putString("stream",report.getString("stream","")+"PASS: "+checks+" native checks\n");finish(RESULT_OK,report);
         }catch(Throwable error){report.putString("stream","FAIL: "+error.toString()+"\n");finish(RESULT_CANCELED,report);}
         finally{if(store!=null)store.close();}
     }

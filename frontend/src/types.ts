@@ -140,6 +140,7 @@ export interface WorkspaceState {
   }[];
 }
 export interface CloudStatus {
+  offline_ai?: import("./offlineAi").OfflineAiStatus;
   name?: string;
   offline?: boolean;
   mfa_required?: boolean;

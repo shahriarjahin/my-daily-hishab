@@ -15,6 +15,8 @@ ROOT=Path(__file__).resolve().parent
 REPO=ROOT.parent
 
 def prepare():
+    from scripts.prepare_offline_ai import prepare as prepare_ai
+    ai_source = prepare_ai()
     from sqlmodel import Session,create_engine
     from backend.database import init_db
     from backend.workspace import export_workspace
@@ -44,6 +46,9 @@ def prepare():
     assets.mkdir(parents=True,exist_ok=True)
     (assets/'mobile-config.json').write_text(json.dumps(config),encoding='utf-8')
     (assets/'empty-workspace.json').write_text(json.dumps(empty),encoding='utf-8')
+    shutil.copyfile(ROOT/'offline-ai.json',assets/'offline-ai.json')
+    shutil.copyfile(ai_source/'LICENSE',assets/'llama-LICENSE.txt')
+    shutil.copyfile(ROOT/'THIRD_PARTY_AI.md',assets/'THIRD_PARTY_AI.md')
     return assets
 
 def main():

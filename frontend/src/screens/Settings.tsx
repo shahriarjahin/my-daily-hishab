@@ -3,6 +3,7 @@ import { useStore } from "../context";
 import { api, native, device, exportFile } from "../api";
 import { Title, Card, Button, ErrorMessage, Modal } from "../components/UI";
 import { Icon } from "../components/Icon";
+import { OfflineAiSettings } from "../components/OfflineAiSettings";
 import { formFactory, type Editor } from "../forms";
 import type { Provider, CloudStatus, Settings as SettingsType } from "../types";
 function DeviceSettings() {
@@ -403,7 +404,7 @@ export function SettingsScreen({
             </select>
           </label>
           <label className="settings-row">
-            {t("Enable AI")}
+            {t(native ? "Cloud AI" : "Enable AI")}
             <input
               disabled={busy || cloud?.offline}
               type="checkbox"
@@ -495,6 +496,7 @@ export function SettingsScreen({
             </label>
           )}
         </Card>
+        {native && <OfflineAiSettings />}
         <ErrorMessage message={error} />
       </>
     );

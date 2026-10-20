@@ -2,6 +2,11 @@ import { Capacitor, registerPlugin } from "@capacitor/core";
 import ledgerSource from "../../mobile/web/ledger.js";
 import type { WorkspaceState, CloudStatus } from "./types";
 import { restoreBackup } from "./backup";
+import {
+  checkOfflineInput,
+  offlineExtraction,
+  type OfflineAiStatus,
+} from "./offlineAi";
 interface DeviceLedger {
   state(workspace: unknown): WorkspaceState;
   mutate(
@@ -41,7 +46,39 @@ async function nativeRequest<T>(
   method: string,
   body: unknown,
 ): Promise<T> {
-  if (path === "/cloud/status") return device<T>("status");
+  if (path === "/cloud/status") {
+    const value = await device<CloudStatus>("status");
+    try {
+      value.offline_ai = await device<OfflineAiStatus>("offline-ai");
+    } catch {}
+    return value as T;
+  }
+  if (path === "/extract" && method === "POST") {
+    const localAi = await device<OfflineAiStatus>("offline-ai");
+    if (localAi.enabled) {
+      const input = body as {
+        text: string;
+        wallet_id: number;
+        mode?: string;
+        image?: string;
+      };
+      if (input.image || input.mode === "wallets")
+        throw new Error("Offline AI supports text income and expenses only.");
+      const local = await device<{ workspace: unknown }>("load");
+      const state = ledger.state(local.workspace);
+      checkOfflineInput(input.text, state, input.wallet_id);
+      const result = await device<{ raw: string }>("offline-ai", {
+        action: "generate",
+        text: input.text,
+      });
+      return offlineExtraction(
+        result.raw,
+        input.text,
+        input.wallet_id,
+        state,
+      ) as T;
+    }
+  }
   if (
     path === "/auth/security" ||
     path.startsWith("/auth/mfa") ||

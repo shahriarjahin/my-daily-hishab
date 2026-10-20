@@ -75,3 +75,6 @@ ml/results/gguf_diag_preds/
 /mobile/android/capacitor-cordova-android-plugins/
 /mobile/android/capacitor.settings.gradle
 /mobile/android/app/capacitor.build.gradle
+
+# Android native build intermediates
+/mobile/android/app/.cxx/
