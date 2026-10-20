@@ -1,8 +1,7 @@
 # Hishab cloud app
 
 All active financial data belongs to a signed-in Supabase account. There is no local-data mode.
-The Python server serves the responsive web app and the same JSON API that a future iOS/Android
-client can use. Supabase stores versioned workspaces and encrypted per-account AI connections.
+The Python server serves the React web app and the JSON API used by the Android client. Supabase stores versioned workspaces and encrypted per-account AI connections.
 
 ## Development
 

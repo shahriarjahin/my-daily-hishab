@@ -4,7 +4,7 @@
   "functions": {
     "app.py": {
       "maxDuration": 90,
-      "includeFiles": "{backend/templates,backend/static,supabase/migrations}/**"
+      "includeFiles": "{backend/static,supabase/migrations}/**"
     }
   }
 }

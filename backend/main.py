@@ -6,7 +6,6 @@ from pathlib import Path
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 
 from .api import router
 from .integrations import router as integration_router
@@ -26,7 +25,6 @@ app.include_router(router)
 app.include_router(integration_router)
 app.include_router(finance_router)
 app.mount("/static", StaticFiles(directory=str(_HERE / "static")), name="static")
-templates = Jinja2Templates(directory=str(_HERE / "templates"))
 react_directory = _HERE / "static" / "react"
 # The committed production bundle keeps Vercel's Python build independent of Node.
 app.mount("/assets", StaticFiles(directory=str(react_directory / "assets"), check_dir=False), name="react-assets")

@@ -57,11 +57,11 @@ Alias: `hishab`. Never put these signing values in source files, issues or chat.
 ## Validation
 
 ```powershell
-node --test mobile/test_ledger.cjs mobile/test_transport.cjs
+node --test mobile/test_ledger.cjs
 .\.venv\Scripts\python.exe -m unittest mobile.test_compatibility -v
 ```
 
-Compatibility tests import a synthetic Android workspace into the Python database, validate the shared cloud schema, and compare all planning fields and wallet balances with the web implementation. Release builds run Android vital lint and signing validation. Android 15 emulator verification passed 13 native checks covering encryption, persistence, account isolation, stale acknowledgments, conflict recovery and the packaged login screen. The JavaScript tests pass 19 ledger/transport checks, plus the Python compatibility check. Real-account login and cross-device sync still require sign-in on a phone; automated tests never use production credentials or records.
+Compatibility tests import a synthetic Android workspace into the Python database, validate the shared cloud schema, and compare all planning fields and wallet balances with the web implementation. Release builds run Android vital lint and signing validation. Android 15 emulator verification passed 13 native checks covering encryption, persistence, account isolation, stale acknowledgments, conflict recovery and the packaged login screen. The offline ledger has 16 checks; the React transport has four tests, plus the Python compatibility check. Real-account login and cross-device sync still require sign-in on a phone; automated tests never use production credentials or records.
 
 The instrumented checks are in `android/app/src/androidTest`. Build `assembleReleaseAndroidTest`, install both APKs on an emulator, then run `adb shell am instrument -w com.digitxbd.hishab.test/com.digitxbd.hishab.DatabaseChecks`. These checks use isolated synthetic accounts and make no authenticated production requests.
 

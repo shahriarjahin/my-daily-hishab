@@ -27,3 +27,7 @@ Restore into a separate folder, create a Python environment and install its requ
 - Android upgrade test: install old app, create encrypted synthetic records, install Capacitor APK in place, and verify old ciphertext remains readable. React login and plugin registration are checked on-device.
 
 Real-account sync and future-version installation on a physical phone require user sign-in and Android installer confirmation. No production financial data was used by these tests. iOS native integration has not been implemented or built.
+
+## Repository cleanup
+
+Obsolete pre-React HTML renderers, navigation scripts, native WebView transport/UI, their retired transport tests, and superseded icons were removed. Shared CSS, current branding, the offline ledger and its compatibility tests remain. A private local copy of removed files is retained under ignored `backups/`.

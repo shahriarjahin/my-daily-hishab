@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import { StoreProvider } from "./context";
 import "./styles.css";
+import "./loading.css";
 createRoot(document.getElementById("root")!).render(
   <StoreProvider>
     <App />

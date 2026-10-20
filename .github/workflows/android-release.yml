@@ -35,7 +35,7 @@ jobs:
         run: npm test --prefix frontend
       - name: Validate the offline ledger
         run: |
-          node --test mobile/test_ledger.cjs mobile/test_transport.cjs
+          node --test mobile/test_ledger.cjs
           python -m unittest mobile.test_compatibility -v
       - name: Restore release signing key
         env:

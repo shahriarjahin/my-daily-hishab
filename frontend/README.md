@@ -31,7 +31,7 @@ Browser checks use an isolated Chrome profile and synthetic records; no account 
 - `src/locales/bn.json`: existing Bangla presentation translations.
 - `capacitor.config.ts`: existing package ID `com.digitxbd.hishab`; native project is `../mobile/android`.
 
-The shared offline ledger remains `mobile/web/ledger.js`: it is bundled as a module, not injected as a page script. Its exact-cent validation and shared Supabase workspace schema remain covered by the existing ledger and compatibility tests. The former global UI scripts and template are no longer loaded. Existing CSS and public branding assets are reused.
+The shared offline ledger remains `mobile/web/ledger.js`: it is bundled as a module, not injected as a page script. Its exact-cent validation and shared Supabase workspace schema remain covered by the existing ledger and compatibility tests. The former global UI scripts and template have been removed. Existing CSS and public branding assets are reused.
 
 ## Native platforms
 

@@ -12,6 +12,7 @@ import { Wealth } from "./screens/Wealth";
 import { Advisor, Importer, AutoPlan } from "./screens/AI";
 import { SettingsScreen } from "./screens/Settings";
 import type { Route } from "./types";
+import { LoadingScreen } from "./components/LoadingScreen";
 function Auth() {
   const { refresh, t } = useStore(),
     [mode, setMode] = useState("login"),
@@ -166,7 +167,7 @@ export default function App() {
     setDeleteError("");
     setDeletion({ path, label });
   };
-  if (loading) return <main className="initial-loading">Loading Hishab…</main>;
+  if (loading) return <LoadingScreen />;
   if (error && !s)
     return (
       <main>
