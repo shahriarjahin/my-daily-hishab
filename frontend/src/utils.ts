@@ -11,7 +11,18 @@ export const day = (value: string | Date = new Date()) => {
   );
   return `${p.year}-${p.month}-${p.day}`;
 };
-export const dated = (value: string) => value + "T12:00:00+06:00";
+const dhakaClock = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Asia/Dhaka",
+  hourCycle: "h23",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  fractionalSecondDigits: 3,
+});
+export const time = (value: string) =>
+  dhakaClock.format(new Date(value)).split(".")[0];
+export const dated = (value: string, original: string | Date = new Date()) =>
+  value + "T" + dhakaClock.format(new Date(original)) + "+06:00";
 export const total = (rows: Transaction[], type?: string) =>
   rows
     .filter((t) => !type || t.type === type)

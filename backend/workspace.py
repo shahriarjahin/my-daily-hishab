@@ -99,6 +99,7 @@ def validate_workspace(data):
         raise ValueError("Settings cannot be null.")
     goal_ids = {r.get("id") for r in parsed.goals}
     loan_ids = {r.get("id") for r in parsed.loans}
+    regular_categories = set()
     for key in ("movements", "goals", "savings", "loans", "advisor_messages", "regulars"):
         ids = set()
         for row in getattr(parsed, key):
@@ -114,6 +115,9 @@ def validate_workspace(data):
                 GoalInput.model_validate({k: v for k, v in row.items() if k != "id"})
             if key == "regulars":
                 valid = RegularInput.model_validate({k: v for k, v in row.items() if k != "id"})
+                if valid.category in regular_categories:
+                    raise ValueError("Duplicate regular category.")
+                regular_categories.add(valid.category)
                 if valid.category not in exact_names:
                     raise ValueError("Regular references a missing category.")
             if key == "savings":
@@ -165,7 +169,10 @@ class CloudSession(Session):
     def commit(self):
         from .cloud import save_workspace
         self.flush()
-        snapshot = export_workspace(self)
+        try:
+            snapshot = validate_workspace(export_workspace(self))
+        except ValueError:
+            raise HTTPException(422, "Workspace limits or validation failed. Your cloud records were not changed.") from None
         self.revision = save_workspace(snapshot, self.revision)
         from .cloud import CURRENT_USER
         identity = CURRENT_USER.get()

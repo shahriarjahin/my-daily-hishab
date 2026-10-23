@@ -54,7 +54,7 @@ export function restoreBackup(current: any, raw: any) {
     check(
       typeof r.name === "string" &&
         r.name.trim() &&
-        r.name.length <= 60 &&
+        r.name.length <= 40 &&
         !names.has(r.name.toLowerCase()),
     );
     names.add(r.name.toLowerCase());
@@ -143,10 +143,15 @@ export function restoreBackup(current: any, raw: any) {
     budgets.add(r.category);
     L.money(r.amount);
   }
+  const regularCategories = new Set();
   for (const r of w.regulars) {
     check(
-      categories.has(r.category) && typeof r.name === "string" && r.name.trim(),
+      categories.has(r.category) &&
+        !regularCategories.has(r.category) &&
+        typeof r.name === "string" &&
+        r.name.trim(),
     );
+    regularCategories.add(r.category);
     L.money(r.daily_limit, false);
     check(r.daily_limit >= 0);
   }

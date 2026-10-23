@@ -27,3 +27,15 @@ describe("Android backup restore", () => {
     expect(() => restoreBackup(seed, invalid)).toThrow();
   });
 });
+
+it("rejects duplicate regular categories and wallet names rejected by cloud sync", () => {
+  const invalid = structuredClone(demo);
+  invalid.regulars = [
+    { id: 1, name: "A", category: "Food", daily_limit: 1, unit: "pcs" },
+    { id: 2, name: "B", category: "Food", daily_limit: 1, unit: "pcs" },
+  ];
+  expect(() => restoreBackup(seed, invalid)).toThrow();
+  invalid.regulars = [];
+  invalid.wallets[0].name = "x".repeat(41);
+  expect(() => restoreBackup(seed, invalid)).toThrow();
+});

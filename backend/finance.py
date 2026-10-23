@@ -384,6 +384,32 @@ class RepayInput(Input):
     _amount = field_validator("amount", mode="before")(money)
 
 
+def correctable_loan(session, loan_id):
+    loan = require_row(session, Loan, loan_id)
+    if loan.repaid or any(m.loan_id == loan_id for m in rows(session, Movement)):
+        raise HTTPException(422, "Remove this loan's movement records before correcting it.")
+    return loan
+
+
+@router.put("/loans/{loan_id}")
+def edit_existing_loan(loan_id: int, body: LoanInput, session: Session = Depends(get_session)):
+    loan = correctable_loan(session, loan_id)
+    if body.affect_wallet:
+        raise HTTPException(422, "An existing loan correction must not change wallet balances.")
+    for key, value in body.model_dump(exclude={"wallet_id", "affect_wallet"}).items():
+        setattr(loan, key, value)
+    session.add(loan)
+    session.commit()
+    return {"saved": True}
+
+
+@router.delete("/loans/{loan_id}")
+def delete_existing_loan(loan_id: int, session: Session = Depends(get_session)):
+    session.delete(correctable_loan(session, loan_id))
+    session.commit()
+    return {"saved": True}
+
+
 @router.post("/loans/{loan_id}/repayments")
 def repay(loan_id: int, body: RepayInput, session: Session = Depends(get_session)):
     loan = require_row(session, Loan, loan_id)

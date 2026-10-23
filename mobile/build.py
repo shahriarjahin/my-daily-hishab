@@ -52,7 +52,10 @@ def prepare():
     return assets
 
 def main():
-    parser=argparse.ArgumentParser();parser.add_argument('--prepare-only',action='store_true');parser.add_argument('--ci',action='store_true');args=parser.parse_args()
+    parser=argparse.ArgumentParser();parser.add_argument('--prepare-only',action='store_true');parser.add_argument('--ci',action='store_true');parser.add_argument('--create-signing-key',action='store_true');args=parser.parse_args()
+    if args.ci and args.create_signing_key:parser.error('CI must restore the existing signing key.')
+    if not args.prepare_only and not args.create_signing_key and not (ROOT/'release-keys/hishab-release.p12').exists():
+        parser.error('Restore the existing release signing key. Use --create-signing-key only for a first release; a new key cannot update installed apps.')
     sys.path.insert(0,str(REPO));prepare()
     if args.prepare_only:return
     tools=ROOT/'.tools'
@@ -64,7 +67,6 @@ def main():
     (ROOT/'android/local.properties').write_text('sdk.dir='+str(sdk).replace('\\','/')+'\n')
     keys=ROOT/'release-keys';keys.mkdir(exist_ok=True)
     if not (keys/'hishab-release.p12').exists():
-        if args.ci:raise SystemExit('Release signing key must be restored from CI secrets.')
         password=secrets.token_urlsafe(36)
         env['HISHAB_KEY_PASSWORD']=password
         keytool=str(java/'bin'/('keytool.exe' if os.name=='nt' else 'keytool'))

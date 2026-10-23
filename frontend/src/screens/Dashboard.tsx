@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useStore } from "../context";
 import { Card, Title, Empty } from "../components/UI";
 import { Icon } from "../components/Icon";
-import { day, total, palette, walletLogo } from "../utils";
+import { day, time, total, palette, walletLogo } from "../utils";
 import type { Transaction } from "../types";
 import type { Editor } from "../forms";
 import { formFactory } from "../forms";
@@ -31,6 +31,8 @@ export function TransactionRow({
         <small>
           {t(entry.category)} ·{" "}
           {s!.wallets.find((w) => w.id === entry.wallet_id)?.name}
+          {" · "}
+          <time dateTime={entry.date}>{time(entry.date)}</time>
         </small>
       </div>
       <div

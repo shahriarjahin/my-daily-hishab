@@ -4,7 +4,7 @@ import { Title, Empty, Button, Card } from "../components/UI";
 import { Icon } from "../components/Icon";
 import { TransactionRow } from "./Dashboard";
 import { formFactory, type Editor } from "../forms";
-import { day } from "../utils";
+import { day, time } from "../utils";
 import { exportFile } from "../api";
 export function Activity({
   edit,
@@ -314,6 +314,12 @@ export function Activity({
                       <small>
                         {t(r.type)} ·{" "}
                         {s!.wallets.find((w) => w.id === r.wallet_id)?.name}
+                        {r.date && (
+                          <>
+                            {" "}
+                            · <time dateTime={r.date}>{time(r.date)}</time>
+                          </>
+                        )}
                       </small>
                     </div>
                     <div className="transaction-amount">{money(r.amount)}</div>

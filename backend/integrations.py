@@ -10,7 +10,7 @@ from pydantic import Field, SecretStr, field_validator
 from sqlmodel import Session, select
 
 from . import ai, cloud
-from .api import Input, WalletInput, TransactionInput, canonical_category, money, total, now
+from .api import Input, WalletInput, TransactionInput, canonical_category, money, total, now, ensure_wallet, ensure_category
 from .database import get_session
 from .models import Transaction, Wallet, Category, AppSetting
 from .workspace import export_workspace, import_workspace, validate_workspace
@@ -166,15 +166,21 @@ def extract_entries(body: ExtractInput, session: Session = Depends(get_session))
 
 @router.post("/wallets/balances")
 def apply_wallet_balances(body: BalanceBatch, session: Session = Depends(get_session)):
-    if len({w.name.casefold() for w in body.wallets}) != len(body.wallets):
+    previews = update_wallet_balances(body.wallets, session)
+    session.commit()
+    return {"wallets": previews}
+
+
+def update_wallet_balances(wallets, session):
+    if len({w.name.casefold() for w in wallets}) != len(wallets):
         raise HTTPException(422, "Each wallet must appear only once.")
-    previews = [balance_preview(session, item) for item in body.wallets]
-    for item, preview in zip(body.wallets, previews):
+    previews = [balance_preview(session, item) for item in wallets]
+    for item, preview in zip(wallets, previews):
         if preview["existing"] and item.expected_balance is None:
             raise HTTPException(409, "An existing wallet needs a fresh balance preview before it can be updated.")
         if item.expected_balance is not None and item.expected_balance != preview["expected_balance"]:
             raise HTTPException(409, "A wallet changed since the preview. Extract again before applying balances.")
-    for item in body.wallets:
+    for item in wallets:
         wallet = next((w for w in session.exec(select(Wallet)).all() if w.name.casefold() == item.name.casefold()), None)
         if wallet:
             from .finance import wallet_balance
@@ -186,8 +192,26 @@ def apply_wallet_balances(body: BalanceBatch, session: Session = Depends(get_ses
         else:
             wallet = Wallet(name=item.name, opening_balance=item.balance, created_at=now())
         session.add(wallet)
+    return previews
+
+
+class ReviewedImport(Input):
+    wallets: list[BalanceInput] = Field(default_factory=list, max_length=100)
+    transactions: list[TransactionInput] = Field(default_factory=list, max_length=100)
+
+
+@router.post("/imports/reviewed")
+def save_reviewed_import(body: ReviewedImport, session: Session = Depends(get_session)):
+    if not body.wallets and not body.transactions:
+        raise HTTPException(422, "No financial entries found.")
+    for item in body.transactions:
+        ensure_wallet(session, item.wallet_id)
+        ensure_category(session, item.category)
+    update_wallet_balances(body.wallets, session)
+    for item in body.transactions:
+        session.add(Transaction(**item.model_dump()))
     session.commit()
-    return {"wallets": previews}
+    return {"saved": True}
 
 
 class AuthInput(Input):

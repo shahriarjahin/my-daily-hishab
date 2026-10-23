@@ -10,7 +10,8 @@
  const text=(v,max)=>{requireValue(typeof v==='string'&&v.trim().length>0&&v.trim().length<=max,'Check the text fields.');return v.trim();};
  const date=v=>{if(!v)return new Date().toISOString();const d=new Date(v);requireValue(Number.isFinite(d.getTime()),'Choose a valid date.');return d.toISOString();};
  const due=v=>{if(!v)return null;requireValue(/^\d{4}-\d{2}-\d{2}$/.test(v)&&new Date(v).toISOString().slice(0,10)===v,'Choose a valid due date.');return v;};
- const day=v=>{const parts=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Dhaka',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(v)).map(p=>[p.type,p.value]));return `${parts.year}-${parts.month}-${parts.day}`;};
+ const dhakaDate=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Dhaka',year:'numeric',month:'2-digit',day:'2-digit'});
+ const day=v=>{const parts=Object.fromEntries(dhakaDate.formatToParts(new Date(v)).map(p=>[p.type,p.value]));return `${parts.year}-${parts.month}-${parts.day}`;};
  const row=(list,id)=>{const found=list.find(r=>r.id===id);requireValue(found,'Record not found.');return found;};
  const next=list=>Math.max(0,...list.map(r=>r.id))+1;
  const add=(list,data)=>{const r={id:next(list),...data};list.push(r);return r;};
@@ -36,6 +37,12 @@
  }
  function goal(b){requireValue(/^#[0-9a-f]{6}$/i.test(b.color||'#93ddba'),'Choose a valid color.');return {name:text(b.name,100),target:money(b.target),due_date:due(b.due_date),color:b.color||'#93ddba'};}
  function mutate(raw,path,method,b={}){
+  if(path==='/imports/reviewed'&&method==='POST'){
+   requireValue(Array.isArray(b.wallets)&&Array.isArray(b.transactions)&&(b.wallets.length||b.transactions.length),'No financial entries found.');
+   let draft=raw;if(b.wallets.length)draft=mutate(draft,'/wallets/balances','POST',{wallets:b.wallets}).workspace;
+   if(b.transactions.length)draft=mutate(draft,'/transactions','POST',{transactions:b.transactions}).workspace;
+   return {workspace:normalize(draft),result:{saved:true}};
+  }
   const w=normalize(raw);let result={saved:true};const match=path.match(/^\/(\w+)(?:\/(\d+))?(?:\/(repayments))?$/);let name=match?.[1],id=Number(match?.[2]);
   if(path==='/transactions'&&method==='POST'){
    requireValue(Array.isArray(b.transactions)&&b.transactions.length>0&&b.transactions.length<=100,'Add 1–100 entries.');const validated=b.transactions.map(t=>transaction(w,t));result={transactions:validated.map(t=>add(w.transactions,t))};
@@ -72,7 +79,11 @@
   }else if(name==='savings'&&id&&method==='PUT'){const old=row(w.savings,id),n=money(b.amount);row(w.wallets,b.wallet_id);requireValue(category(w,b.category).bucket==='savings','Choose a savings category.');if(b.goal_id)row(w.goals,b.goal_id);requireValue((b.note||'').length<=240,'Note is too long.');requireValue(n<=total([balance(w,b.wallet_id),...w.savings.filter(r=>r.wallet_id===b.wallet_id&&r.id!==id).map(r=>-r.amount)]),'This wallet has insufficient unreserved money.');Object.assign(old,{amount:n,category:b.category,wallet_id:b.wallet_id,goal_id:b.goal_id||null,note:b.note||''});
   }else if(name==='savings'&&id&&method==='DELETE')remove(w.savings,id);
   else if(path==='/loans'&&method==='POST'){
-   const n=money(b.amount),affect=b.affect_wallet!==false;if(affect)row(w.wallets,b.wallet_id);requireValue(['lent','borrowed'].includes(b.direction),'Check loan direction.');if(affect&&b.direction==='lent')funds(w,b.wallet_id,n);requireValue((b.note||'').length<=240,'Note is too long.');const l=add(w.loans,{party:text(b.party,100),direction:b.direction,amount:n,repaid:0,due_date:due(b.due_date),note:b.note||'',date:date(b.date)});if(affect)add(w.movements,{description:(b.direction==='borrowed'?'Borrowed from ':'Lent to ')+l.party,amount:n,kind:'loan',loan_id:l.id,from_wallet_id:b.direction==='lent'?b.wallet_id:null,to_wallet_id:b.direction==='borrowed'?b.wallet_id:null,date:date()});
+   const n=money(b.amount),affect=b.affect_wallet!==false;if(affect)row(w.wallets,b.wallet_id);requireValue(['lent','borrowed'].includes(b.direction),'Check loan direction.');if(affect&&b.direction==='lent')funds(w,b.wallet_id,n);requireValue((b.note||'').length<=240,'Note is too long.');const l=add(w.loans,{party:text(b.party,100),direction:b.direction,amount:n,repaid:0,due_date:due(b.due_date),note:b.note||'',date:date(b.date)});if(affect)add(w.movements,{description:(b.direction==='borrowed'?'Borrowed from ':'Lent to ')+l.party,amount:n,kind:'loan',loan_id:l.id,from_wallet_id:b.direction==='lent'?b.wallet_id:null,to_wallet_id:b.direction==='borrowed'?b.wallet_id:null,date:l.date});
+  }else if(name==='loans'&&id&&!match[3]&&['PUT','DELETE'].includes(method)){
+   const l=row(w.loans,id);requireValue(!l.repaid&&!w.movements.some(m=>m.loan_id===id),"Remove this loan's movement records before correcting it.");
+   if(method==='DELETE')remove(w.loans,id);
+   else {requireValue(b.affect_wallet===false,'An existing loan correction must not change wallet balances.');requireValue(['lent','borrowed'].includes(b.direction),'Check loan direction.');requireValue((b.note||'').length<=240,'Note is too long.');Object.assign(l,{party:text(b.party,100),direction:b.direction,amount:money(b.amount),date:date(b.date),due_date:due(b.due_date),note:b.note||''});}
   }else if(name==='loans'&&id&&match[3]==='repayments'&&method==='POST'){
    const l=row(w.loans,id),n=money(b.amount);row(w.wallets,b.wallet_id);requireValue(n<=total([l.amount,-l.repaid]),'Repayment exceeds the remaining loan.');if(l.direction==='borrowed')funds(w,b.wallet_id,n);l.repaid=total([l.repaid,n]);add(w.movements,{description:'Loan repayment: '+l.party,amount:n,kind:'repayment',loan_id:l.id,from_wallet_id:l.direction==='borrowed'?b.wallet_id:null,to_wallet_id:l.direction==='lent'?b.wallet_id:null,date:date()});
   }else if(name==='regulars'&&['POST','PUT'].includes(method)){

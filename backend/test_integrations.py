@@ -221,6 +221,7 @@ class AdapterTests(unittest.TestCase):
                     self.assertEqual(call.call_args.args[1]["anthropic-version"], "2023-06-01")
                 if provider == "openai":
                     self.assertFalse(call.call_args.args[2]["store"])
+                    self.assertEqual(call.call_args.args[2]["input"][0], {"role": "system", "content": "Return JSON"})
 
 
 if __name__ == "__main__":

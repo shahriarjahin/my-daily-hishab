@@ -143,7 +143,7 @@ Never publish `.env`, signing keys or financial exports. Keep the encryption sec
 
 ```powershell
 .\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
-.\.venv\Scripts\python.exe -m unittest backend.test_api backend.test_app backend.test_integrations backend.test_finance backend.test_account_updates backend.test_security mobile.test_compatibility -q
+.\.venv\Scripts\python.exe -m unittest backend.test_api backend.test_app backend.test_integrations backend.test_finance backend.test_account_updates backend.test_security backend.test_audit_fixes mobile.test_compatibility -q
 npm test --prefix frontend
 node --test mobile/test_ledger.cjs
 npm run test:browser --prefix frontend

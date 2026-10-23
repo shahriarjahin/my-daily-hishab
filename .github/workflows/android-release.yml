@@ -39,6 +39,8 @@ jobs:
         run: |
           node --test mobile/test_ledger.cjs
           python -m unittest mobile.test_compatibility -v
+      - name: Validate cloud security and financial writes
+        run: python -m unittest backend.test_api backend.test_app backend.test_finance backend.test_integrations backend.test_security backend.test_account_updates backend.test_audit_fixes
       - name: Restore release signing key
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}

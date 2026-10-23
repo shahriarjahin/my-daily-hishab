@@ -219,7 +219,7 @@ export function Importer() {
             ·{" "}
             {t(
               cloud?.offline_ai?.enabled
-                ? "Text stays on this phone. Review wallet, category and amount before saving."
+                ? "Text stays on this device. Review wallet, category and amount before saving."
                 : "AI providers receive your text or receipt.",
             )}
           </p>
@@ -391,14 +391,10 @@ export function Importer() {
               setWorking(true);
               setError("");
               try {
-                if (result.wallets.length)
-                  await mutate("/wallets/balances", "POST", {
-                    wallets: result.wallets,
-                  });
-                if (result.transactions.length)
-                  await mutate("/transactions", "POST", {
-                    transactions: result.transactions,
-                  });
+                await mutate("/imports/reviewed", "POST", {
+                  wallets: result.wallets,
+                  transactions: result.transactions,
+                });
                 setResult(null);
                 setText("");
                 notify("Saved");

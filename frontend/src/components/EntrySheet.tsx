@@ -137,6 +137,21 @@ export function EntrySheet({
             </select>
           )}
         </div>
+        {type === "expense" && chosen === "Food" && (
+          <div className="pad-categories section-gap" aria-label={t("Meal")}>
+            {["Breakfast", "Lunch", "Dinner"].map((meal) => (
+              <button
+                type="button"
+                key={meal}
+                className={"chip " + (note === t(meal) ? "active" : "")}
+                aria-pressed={note === t(meal)}
+                onClick={() => setNote(t(meal))}
+              >
+                {t(meal)}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="entry-details">
           <label>
             {t("Account")}

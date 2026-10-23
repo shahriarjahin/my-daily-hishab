@@ -818,5 +818,15 @@
   "Offline AI is unavailable on this device.": "এই ডিভাইসে অফলাইন এআই ব্যবহার করা যাচ্ছে না।",
   "Offline AI timed out. Try a shorter entry.": "অফলাইন এআইয়ের সময় শেষ হয়েছে। আরও সংক্ষিপ্ত করে লিখুন।",
   "Entry is too complex. Split it into smaller entries.": "এন্ট্রিটি বড় বা জটিল। কয়েকটি ছোট এন্ট্রিতে ভাগ করুন।",
-  "Choose the wallet mentioned in your text.": "লেখায় যে ওয়ালেটের নাম আছে সেটি বেছে নিন।"
+  "Choose the wallet mentioned in your text.": "লেখায় যে ওয়ালেটের নাম আছে সেটি বেছে নিন।",
+  "Edit loan": "ঋণ সম্পাদনা",
+  "Remove this loan's movement records before correcting it.": "এই ঋণ সংশোধনের আগে সংশ্লিষ্ট অর্থ স্থানান্তরের রেকর্ড সরান।",
+  "An existing loan correction must not change wallet balances.": "পুরোনো ঋণ সংশোধনে ওয়ালেটের ব্যালেন্স পরিবর্তন করা যাবে না।",
+  "AI connections changed on another device. Reload and try again.": "অন্য ডিভাইসে এআই সংযোগ পরিবর্তিত হয়েছে। রিলোড করে আবার চেষ্টা করুন।",
+  "Workspace limits or validation failed. Your cloud records were not changed.": "রেকর্ডের সীমা বা যাচাইয়ে সমস্যা হয়েছে। আপনার ক্লাউড রেকর্ড পরিবর্তন করা হয়নি।",
+  "Meal": "বেলার খাবার",
+  "Breakfast": "সকালের নাশতা",
+  "Lunch": "দুপুরের খাবার",
+  "Dinner": "রাতের খাবার",
+  "Text stays on this device. Review wallet, category and amount before saving.": "লেখা এই ডিভাইসেই থাকে। সংরক্ষণের আগে ওয়ালেট, বিভাগ ও পরিমাণ দেখে নিন।"
 }

@@ -1,10 +1,13 @@
 """Provider adapters and automatic failover. Credentials never enter ledger backups."""
 import json
+import ipaddress
+import logging
 import os
+import socket
 import threading
 import time
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, urlunsplit
 
 import httpx
 from dotenv import load_dotenv
@@ -26,9 +29,9 @@ PROVIDERS = {
 
 
 class ProviderError(Exception):
-    def __init__(self, reason, status=None):
+    def __init__(self, reason, status=None, code=None):
         super().__init__(reason)
-        self.reason, self.status = reason, status
+        self.reason, self.status, self.code = reason, status, code
 
 
 def cipher():
@@ -38,9 +41,8 @@ def cipher():
 
 def load_configs():
     load_dotenv(ROOT / ".env", override=True, encoding="utf-8-sig")
-    with LOCK:
-        from .cloud import read_ai_configs
-        stored = read_ai_configs()
+    from .cloud import read_ai_configs
+    stored = read_ai_configs()
     configs = []
     from .cloud import CURRENT_USER
     identity = CURRENT_USER.get()
@@ -93,16 +95,17 @@ def save_config(provider_id, data):
             raise ValueError("Use an HTTPS API base URL without credentials or query parameters.")
         if provider_id != "custom":
             raise ValueError("Only the custom provider accepts an API base URL.")
+        public_destination(data["base_url"])
+    from .cloud import read_ai_configs, save_ai_configs
+    stored = read_ai_configs()
+    item = stored.setdefault(provider_id, {})
+    for key in ("model", "enabled", "priority", "base_url"):
+        if key in data:
+            item[key] = data[key]
+    if data.get("api_key"):
+        item["encrypted_key"] = cipher().encrypt(data["api_key"].strip().encode()).decode()
+    save_ai_configs(stored)
     with LOCK:
-        from .cloud import read_ai_configs, save_ai_configs
-        stored = read_ai_configs()
-        item = stored.setdefault(provider_id, {})
-        for key in ("model", "enabled", "priority", "base_url"):
-            if key in data:
-                item[key] = data[key]
-        if data.get("api_key"):
-            item["encrypted_key"] = cipher().encrypt(data["api_key"].strip().encode()).decode()
-        save_ai_configs(stored)
         HEALTH.pop((scope(), provider_id), None)
 
 
@@ -113,15 +116,51 @@ def reset_health():
                 HEALTH.pop(key, None)
 
 
-def post(url, headers, body, timeout):
+def public_destination(address):
+    parsed = urlsplit(address)
+    if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password or parsed.fragment:
+        raise ValueError("Use a public HTTPS AI endpoint.")
+    try:
+        addresses = list(dict.fromkeys(r[4][0] for r in socket.getaddrinfo(parsed.hostname, parsed.port or 443, type=socket.SOCK_STREAM)))
+        ips = [ipaddress.ip_address(ip) for ip in addresses]
+        if not ips or any(not ip.is_global or ip.is_multicast or getattr(ip, "ipv4_mapped", None) for ip in ips):
+            raise ValueError("Use a public HTTPS AI endpoint.")
+    except OSError:
+        raise ValueError("AI endpoint hostname could not be resolved.") from None
+    ip = addresses[0]
+    host = "[" + ip + "]" if ":" in ip else ip
+    return urlunsplit((parsed.scheme, host + (":" + str(parsed.port) if parsed.port else ""), parsed.path, parsed.query, "")), parsed.hostname, parsed.netloc
+
+
+def post(url, headers, body, timeout, custom=False):
     # No automatic redirects: a provider must not redirect a credential to another host.
     limits = httpx.Timeout(timeout, connect=min(3, timeout), write=min(3, timeout), pool=min(2, timeout))
+    extensions = {}
+    if custom:
+        try:
+            url, hostname, authority = public_destination(url)
+        except ValueError:
+            raise ProviderError("configuration") from None
+        # Pin the validated address while retaining TLS hostname verification.
+        headers = {**headers, "Host": authority}
+        extensions = {"sni_hostname": hostname}
     with httpx.Client(timeout=limits, follow_redirects=False, trust_env=False) as client:
-        response = client.post(url, headers=headers, json=body)
+        response = client.request("POST", url, headers=headers, json=body, extensions=extensions)
     if not 200 <= response.status_code < 300:
         code = response.status_code
         reason = "credit_limit" if code == 402 else "rate_or_credit_limit" if code == 429 else "credentials" if code in (401, 403) else "unavailable" if code >= 500 else "configuration"
-        raise ProviderError(reason, code)
+        try:
+            upstream = response.json().get("error", {})
+            message = str(upstream.get("message", "")).lower() if isinstance(upstream, dict) else ""
+            upstream = upstream.get("code") if isinstance(upstream, dict) else None
+            upstream = upstream if isinstance(upstream, str) and upstream in {"invalid_api_key", "model_not_found", "insufficient_quota", "unsupported_parameter", "unsupported_value", "invalid_request_error", "billing_hard_limit_reached", "rate_limit_exceeded", "context_length_exceeded"} else None
+            if "json" in message and "contain" in message:
+                upstream = "json_instruction_missing"
+        except ValueError:
+            upstream = None
+        if upstream in ("insufficient_quota", "billing_hard_limit_reached"):
+            reason = "credit_limit"
+        raise ProviderError(reason, code, upstream)
     return response.json()
 
 
@@ -148,9 +187,9 @@ def call_provider(config, prompt, text, timeout):
             raise ProviderError(reason, code) from None
     headers = {"Authorization": "Bearer " + key, "Content-Type": "application/json"}
     if provider_id == "openai":
-        content = [{"role": "user", "content": [{"type": "input_text", "text": text}, {"type": "input_image", "image_url": "data:" + image["mime_type"] + ";base64," + image["image"]}]}] if image else text
+        content = [{"type": "input_text", "text": text}, {"type": "input_image", "image_url": "data:" + image["mime_type"] + ";base64," + image["image"]}] if image else text
         result = post("https://api.openai.com/v1/responses", headers,
-            {"model": model, "instructions": prompt, "input": content, "store": False,
+            {"model": model, "input": [{"role": "system", "content": prompt}, {"role": "user", "content": content}], "store": False,
              "text": {"format": {"type": "json_object"}}}, timeout)
         return "".join(part.get("text", "") for item in result.get("output", []) for part in item.get("content", []) if part.get("type") == "output_text")
     if provider_id == "anthropic":
@@ -172,7 +211,7 @@ def call_provider(config, prompt, text, timeout):
             raise ProviderError("image_not_supported")
         messages[1]["content"] = [{"type": "text", "text": text}, {"type": "image_url", "image_url": {"url": "data:" + image["mime_type"] + ";base64," + image["image"]}}]
     result = post(endpoints[provider_id] + "/chat/completions", headers,
-        {"model": model, "messages": messages, "response_format": {"type": "json_object"}}, timeout)
+        {"model": model, "messages": messages, "response_format": {"type": "json_object"}}, timeout, custom=provider_id == "custom")
     return result["choices"][0]["message"]["content"]
 
 
@@ -215,6 +254,7 @@ def extract(prompt, text, validator):
             return result | {"provider": config["name"], "fallback_used": bool(failures), "attempts": failures}
         except ProviderError as exc:
             reason = exc.reason
+            logging.getLogger(__name__).warning("AI provider %s failed: %s (HTTP %s, code %s)", config["id"], reason, exc.status, exc.code)
         except (httpx.TimeoutException, httpx.NetworkError):
             reason = "network_or_timeout"
         except Exception:

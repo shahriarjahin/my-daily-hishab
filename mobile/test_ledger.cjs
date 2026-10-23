@@ -94,3 +94,16 @@ test('optional AI, currency and navigation preferences validate and persist',()=
 test('editing savings preserves cash and category deletion protects history',()=>{
  let w=change(fresh(),'/wallets/1','PATCH',{opening_balance:500});w=change(w,'/savings','POST',{amount:300,category:'Savings',wallet_id:1});w=change(w,'/savings/1','PUT',{amount:400,category:'Savings',wallet_id:1});assert.equal(ledger.balance(w,1),500);assert.equal(ledger.available(w,1),100);assert.throws(()=>change(w,'/savings/1','PUT',{amount:501,category:'Savings',wallet_id:1}));const used=w.category_details.find(c=>c.name==='Savings');assert.throws(()=>change(w,'/categories/'+used.id,'DELETE'));const unused=w.category_details.find(c=>c.name==='Food');w=change(w,'/categories/'+unused.id,'DELETE');assert.ok(!w.category_details.some(c=>c.name==='Food'));
 });
+
+
+test('reviewed mixed imports save atomically',()=>{
+ const w=fresh();const b={wallets:[{name:'Cash',balance:1000,expected_balance:0}],transactions:[{...entry(20,'expense'),category:'Missing'}]};
+ assert.throws(()=>change(w,'/imports/reviewed','POST',b));assert.equal(ledger.balance(w,1),0);
+ b.transactions[0].category='Food';const next=change(w,'/imports/reviewed','POST',b);assert.equal(ledger.balance(next,1),980);assert.equal(next.transactions.length,1);
+});
+test('loan movements use the selected date and existing debts can be corrected safely',()=>{
+ const body={party:'Past',amount:100,direction:'borrowed',wallet_id:1,date:'2025-06-01T12:00:00+06:00'};
+ let w=change(fresh(),'/loans','POST',body);assert.equal(w.movements[0].date,w.loans[0].date);assert.throws(()=>change(w,'/loans/1','DELETE'));
+ w=change(fresh(),'/loans','POST',{...body,affect_wallet:false});w=change(w,'/loans/1','PUT',{...body,amount:200,affect_wallet:false});assert.equal(w.loans[0].amount,200);assert.equal(ledger.balance(w,1),0);
+ w=change(w,'/loans/1','DELETE');assert.equal(w.loans.length,0);
+});

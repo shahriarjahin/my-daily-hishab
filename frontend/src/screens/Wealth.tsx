@@ -217,12 +217,33 @@ export function Wealth({
           </Button>
           <div className="record-grid section-gap">
             {s!.loans.map((l) => (
-              <Card key={l.id}>
-                <div className="section-title">
+              <Card key={l.id} className="goal-card">
+                <div className="goal-card-header">
                   <h2>{l.party}</h2>
-                  <span className="pill">
-                    {t(l.direction === "borrowed" ? "Borrowed" : "Lent")}
-                  </span>
+                  <div className="goal-card-actions">
+                    <span className="pill">
+                      {t(l.direction === "borrowed" ? "Borrowed" : "Lent")}
+                    </span>
+                    {!l.repaid &&
+                      !s!.movements.some((m) => m.loan_id === l.id) && (
+                        <>
+                          <button
+                            className="icon-button"
+                            aria-label={t("Edit {name}", { name: l.party })}
+                            onClick={() => edit(forms.loan(l))}
+                          >
+                            <Icon name="edit" />
+                          </button>
+                          <button
+                            className="icon-button goal-delete"
+                            aria-label={t("Delete {name}", { name: l.party })}
+                            onClick={() => remove("/loans/" + l.id, l.party)}
+                          >
+                            <Icon name="trash" />
+                          </button>
+                        </>
+                      )}
+                  </div>
                 </div>
                 <strong className="insight-total">
                   {money(l.amount - l.repaid)}

@@ -52,6 +52,8 @@ def call(method, path, token=None, body=None, extra_headers=None):
             raise HTTPException(503, "Supabase setup is required. Run supabase/migrations/001_hishab.sql in your project's SQL Editor.")
         if code == "40001":
             raise HTTPException(409, "Your cloud data changed on another device. Reload and try again.")
+        if code == "23505" and path.startswith("/rest/v1/hishab_ai_configs"):
+            raise HTTPException(409, "AI connections changed on another device. Reload and try again.")
         if response.status_code in (400, 401, 403, 422) and path.startswith("/auth/"):
             messages = {
                 "email_not_confirmed": "Confirm your email using the link from Supabase, then sign in.",
@@ -84,7 +86,9 @@ def read_session(request):
         try:
             identity = call("GET", "/auth/v1/user", token)
             return verified_session({"access_token": token}, identity), None
-        except HTTPException:
+        except HTTPException as error:
+            if error.status_code >= 500:
+                raise
             return None, None
     encrypted = request.cookies.get(COOKIE)
     if not encrypted:
@@ -103,7 +107,11 @@ def read_session(request):
         user = call("GET", "/auth/v1/user", saved["access_token"])
         saved = verified_session(saved, user)
         return saved, refreshed
-    except (HTTPException, KeyError):
+    except HTTPException as error:
+        if error.status_code >= 500:
+            raise
+        return None, None
+    except KeyError:
         return None, None
 
 
@@ -145,7 +153,8 @@ def save_workspace(data, expected_revision):
 
 def read_ai_configs():
     identity = user()
-    rows = call("GET", "/rest/v1/hishab_ai_configs?select=encrypted_config&user_id=eq." + identity["user"]["id"], identity["access_token"])
+    rows = call("GET", "/rest/v1/hishab_ai_configs?select=encrypted_config,updated_at&user_id=eq." + identity["user"]["id"], identity["access_token"])
+    identity["ai_config_updated_at"] = rows[0]["updated_at"] if rows else None
     if not rows:
         return {}
     try:
@@ -155,10 +164,19 @@ def read_ai_configs():
 
 
 def save_ai_configs(config):
+    from urllib.parse import quote
+    from datetime import datetime, timezone
     identity = user()
-    call("POST", "/rest/v1/hishab_ai_configs?on_conflict=user_id", identity["access_token"],
-         {"user_id": identity["user"]["id"], "encrypted_config": cipher().encrypt(json.dumps(config).encode()).decode()},
-         {"Prefer": "resolution=merge-duplicates,return=minimal"})
+    encrypted = cipher().encrypt(json.dumps(config).encode()).decode()
+    previous = identity["ai_config_updated_at"]
+    if previous is None:
+        call("POST", "/rest/v1/hishab_ai_configs", identity["access_token"],
+             {"user_id": identity["user"]["id"], "encrypted_config": encrypted})
+    else:
+        changed = call("PATCH", "/rest/v1/hishab_ai_configs?user_id=eq." + identity["user"]["id"] + "&updated_at=eq." + quote(previous, safe=""), identity["access_token"],
+                       {"encrypted_config": encrypted, "updated_at": datetime.now(timezone.utc).isoformat()}, {"Prefer": "return=representation"})
+        if not changed:
+            raise HTTPException(409, "AI connections changed on another device. Reload and try again.")
 
 
 def verified_session(saved, identity):

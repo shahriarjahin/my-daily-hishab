@@ -12,6 +12,8 @@ Android 8.0 or later; targets Android 16 (API 36). Package: `com.digitxbd.hishab
 
 If both phone and cloud have changed, automatic sync stops. Choose a **complete workspace copy** in Settings: cloud or phone. This is explicit conflict resolution, not record-by-record merging. Both original versions are saved encrypted in Recovery copies and can be exported. Choosing the phone copy replaces the cloud snapshot after a revision check. Choosing cloud replaces the active device snapshot. A newer cloud edit triggers another conflict instead of being overwritten.
 
+A missing release key now stops the build. Restore `mobile/release-keys` from your secure backup. Only a first installation should create a key with `python mobile/build.py --create-signing-key`; a new key cannot update existing installations.
+
 ## Device storage
 
 `Store.java` manages app-private `hishab.sqlite`. Workspace and recovery rows use AES-GCM encryption with an Android Keystore key. Access/refresh tokens are encrypted separately; passwords are never saved. Android backup is disabled because the device key cannot be restored on another phone. Signing out removes the session; encrypted account-specific records remain for the next sign-in. Reinstalling or clearing app data removes local records. Sync pending changes or export a backup first.
