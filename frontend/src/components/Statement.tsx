@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useStore } from "../context";
 import { day } from "../utils";
+import { device, native } from "../api";
+import { buildStatement } from "../statement";
 import { Button, ErrorMessage, Modal } from "./UI";
 
 export function Statement({ close }: { close: () => void }) {
@@ -20,6 +22,18 @@ export function Statement({ close }: { close: () => void }) {
           setBusy(true);
           setError("");
           try {
+            if (native) {
+              await device(
+                "statement",
+                buildStatement(state!, {
+                  period,
+                  start: from,
+                  end: to,
+                  wallet_id: wallet ? Number(wallet) : undefined,
+                }),
+              );
+              return;
+            }
             const query = new URLSearchParams({ period });
             if (wallet) query.set("wallet_id", wallet);
             if (period === "custom") {

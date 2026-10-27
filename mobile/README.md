@@ -90,3 +90,9 @@ The shared UI uses cream/white and near-black/charcoal themes with amber accents
 ## React + Capacitor 2.0
 
 The interface is React + TypeScript. Run `npm ci --prefix frontend` before building. `python mobile/build.py` compiles the shared UI, runs Capacitor sync and signs the APK. The existing database, Android Keystore alias, session preferences, package ID and signing key are retained. The custom `HishabPlugin.java` delegates to the tested native runtime. An in-place 1.1.0 → 2.0.0 emulator upgrade passed 22 checks, including reading encrypted records from the prior installation and loading React through the native plugin. See `frontend/README.md` and `docs/REACT_MIGRATION.md`.
+
+## PDF statements
+
+Activity → download icon → select period and wallet → Download PDF. Android generates the statement from the current device snapshot without contacting the backend, then opens the Android save-document picker. The PDF includes the Hishab logo, DigitXBD footer, page numbers, Bangla text, opening/closing balances and individual cash movements once. CSV export is still available in Settings.
+
+PDF-only synthetic emulator checks: build `:app:assembleReleaseAndroidTest`, install the signed app and test APK on a private emulator, then run `adb shell am instrument -w -e statement true com.digitxbd.hishab.test/com.digitxbd.hishab.DatabaseChecks`. The check creates and renders a multi-page sample and exercises the native save-document callback without account login or ledger writes.

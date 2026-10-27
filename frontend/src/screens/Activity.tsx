@@ -5,7 +5,6 @@ import { Icon } from "../components/Icon";
 import { TransactionRow } from "./Dashboard";
 import { formFactory, type Editor } from "../forms";
 import { day, time } from "../utils";
-import { exportFile, native } from "../api";
 import { Statement } from "../components/Statement";
 export function Activity({
   edit,
@@ -103,33 +102,6 @@ export function Activity({
         (r.type === "income" ? r.amount : r.type === "expense" ? -r.amount : 0),
     );
   let previous = "";
-  const csv = () => {
-    const safe = (v: unknown) => {
-      let text = String(v ?? "");
-      if (/^\s*[=+@-]/.test(text)) text = "'" + text;
-      return '"' + text.replaceAll('"', '""') + '"';
-    };
-    void exportFile(
-      "hishab-history.csv",
-      "\ufeff" +
-        [
-          ["Date", "Description", "Type", "Category", "Amount", "Wallet"],
-          ...filtered.map((r) => [
-            r.date,
-            r.description,
-            r.type,
-            r.category,
-            t(r.category),
-            t(r.type),
-            r.amount,
-            s!.wallets.find((w) => w.id === r.wallet_id)?.name,
-          ]),
-        ]
-          .map((r) => r.map(safe).join(","))
-          .join("\r\n"),
-      "text/csv",
-    );
-  };
   return (
     <>
       <Title
@@ -207,9 +179,9 @@ export function Activity({
           </select>
           <button
             className="text-button"
-            aria-label={t(native ? "Export" : "PDF statement")}
-            title={t(native ? "Export" : "PDF statement")}
-            onClick={native ? csv : () => setStatement(true)}
+            aria-label={t("PDF statement")}
+            title={t("PDF statement")}
+            onClick={() => setStatement(true)}
           >
             <Icon name="download" />
           </button>

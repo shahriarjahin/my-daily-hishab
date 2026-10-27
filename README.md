@@ -90,7 +90,7 @@ Screenshots captured on iPhone by the developer, using the demo account. Select 
 | Income, expenses and receipts | Savings goals and allocations | Search, filters and CSV exports |
 | Loans and repayments | Regular spending and quantities | AI advisor and automatic provider fallback |
 
-- **Web statements:** downloadable PDFs for the past 1, 3, 6 or 12 months, or custom dates, with wallet selection and running balances.
+- **PDF statements:** downloadable PDFs for the past 1, 3, 6 or 12 months, or custom dates, with wallet selection and running balances. Android generates them on-device, including offline.
 - **Loan corrections:** edit initial principal, party, due date and notes. Borrowed repayments count as expenses without a second wallet debit.
 - **Made for daily use:** BDT and popular currencies, Bangla/English, light, dark and glass themes.
 - **One account:** Supabase login and account-owned data across web and Android.

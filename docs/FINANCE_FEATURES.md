@@ -46,12 +46,12 @@ Income action are also available.
 ## How the numbers work
 
 - Wallet balance = opening balance + income − expenses + incoming movements − outgoing movements.
-  Opening balances and loan/transfer movements never enter income or expense totals.
+  Opening balances, loan principal and transfers never enter income or expense totals. Borrowed-loan repayments count as expenses through their existing movement, without a second wallet deduction.
 - Savings are earmarks inside wallets. They reduce funds available for everyday use without changing
   the total wallet balance. The app prevents new reservations, transfers or lending beyond unreserved funds.
   Existing expenses can exceed reservations; available funds then make the shortfall visible.
 - Net position = wallet money + loans receivable − debt owed. Repayments update outstanding amounts
-  and wallets atomically; overpayments are rejected.
+  and wallets atomically; overpayments are rejected. Received repayments are not income. Fully repaid loans leave the outstanding list; their dated repayment history stays available.
 - Daily allowance divides the budget remaining before today's expenses by the remaining calendar
   days, including today. Today's expenses then reduce today's allowance. Dhaka dates are used throughout.
 - Forecast = spending so far / elapsed calendar days × days in the month. It is an estimate, not a guarantee.
@@ -87,3 +87,5 @@ Vision protocols follow the official
 [Anthropic vision guide](https://platform.claude.com/docs/en/build-with-claude/vision).
 
 Historical loan entry: POST /api/loans accepts affect_wallet=false, optional wallet_id=null and an original date to record outstanding debt without changing cash. New loans default to affect_wallet=true and require a wallet.
+
+Activity’s download icon generates PDF statements for 1, 3, 6 or 12 months, or custom dates, with wallet selection, running balances, Hishab branding and DigitXBD footer. Android renders and saves them entirely on-device, including offline. CSV remains available in Settings.

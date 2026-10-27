@@ -847,5 +847,8 @@
   "Choose a valid date range ending today or earlier.": "আজ বা তার আগের তারিখ পর্যন্ত সঠিক সময়সীমা বেছে নিন।",
   "Initial amount": "প্রাথমিক পরিমাণ",
   "Repaid": "পরিশোধিত",
-  "No outstanding loans": "কোনো বকেয়া ঋণ নেই"
+  "No outstanding loans": "কোনো বকেয়া ঋণ নেই",
+  "Could not create the PDF statement.": "পিডিএফ স্টেটমেন্ট তৈরি করা যায়নি।",
+  "Could not save the PDF statement. Try a shorter period or another location.": "পিডিএফ সংরক্ষণ করা যায়নি। ছোট সময়সীমা বা অন্য জায়গা বেছে নিন।",
+  "Choose a valid statement period.": "স্টেটমেন্টের সঠিক সময়সীমা বেছে নিন।"
 }

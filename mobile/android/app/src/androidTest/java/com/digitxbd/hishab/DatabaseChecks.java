@@ -9,11 +9,12 @@ import org.json.JSONObject;
 
 /** Device tests use synthetic isolated accounts and never make cloud requests. */
 public final class DatabaseChecks extends Instrumentation {
-    int checks=0;boolean expectUpgrade=false;boolean offlineAi=false;
+    int checks=0;boolean expectUpgrade=false;boolean offlineAi=false;boolean statementOnly=false;
     void check(boolean condition,String message){if(!condition)throw new AssertionError(message);checks++;}
-    @Override public void onCreate(Bundle arguments){super.onCreate(arguments);expectUpgrade="true".equals(arguments.getString("upgrade"));offlineAi="true".equals(arguments.getString("offlineAi"));start();}
+    @Override public void onCreate(Bundle arguments){super.onCreate(arguments);expectUpgrade="true".equals(arguments.getString("upgrade"));offlineAi="true".equals(arguments.getString("offlineAi"));statementOnly="true".equals(arguments.getString("statement"));start();}
     @Override public void onStart(){Bundle report=new Bundle();Store store=null;
         try{
+            if(statementOnly){int pages=StatementChecks.run(this);report.putString("stream","PASS: offline native PDF, "+pages+" pages, embedded logos, Bangla text and validation.\n");finish(RESULT_OK,report);return;}
             check(AppUpdater.compareVersions("1.1.0","1.0.2")>0,"New minor update detected");
             check(AppUpdater.compareVersions("1.10.0","1.9.9")>0,"Versions compared numerically");
             check(AppUpdater.compareVersions("v1.1.0","1.1.0")==0,"Same version is not an update");
