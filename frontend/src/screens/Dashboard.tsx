@@ -11,10 +11,12 @@ export function TransactionRow({
   entry,
   edit,
   remove,
+  showDate = false,
 }: {
   entry: Transaction;
-  edit: () => void;
-  remove: () => void;
+  edit?: () => void;
+  remove?: () => void;
+  showDate?: boolean;
 }) {
   const { state: s, money, t } = useStore(),
     category = s!.category_details.find((c) => c.name === entry.category);
@@ -32,7 +34,10 @@ export function TransactionRow({
           {t(entry.category)} ·{" "}
           {s!.wallets.find((w) => w.id === entry.wallet_id)?.name}
           {" · "}
-          <time dateTime={entry.date}>{time(entry.date)}</time>
+          <time dateTime={entry.date}>
+            {showDate && day(entry.date) + " · "}
+            {time(entry.date)}
+          </time>
         </small>
       </div>
       <div
@@ -43,20 +48,26 @@ export function TransactionRow({
         {entry.type === "income" ? "+" : "−"}
         {money(entry.amount)}
       </div>
-      <div className="row-actions">
-        <button
-          aria-label={t("Edit {name}", { name: entry.description })}
-          onClick={edit}
-        >
-          <Icon name="edit" />
-        </button>
-        <button
-          aria-label={t("Delete {name}", { name: entry.description })}
-          onClick={remove}
-        >
-          <Icon name="trash" />
-        </button>
-      </div>
+      {(edit || remove) && (
+        <div className="row-actions">
+          {edit && !entry.movement_id && (
+            <button
+              aria-label={t("Edit {name}", { name: entry.description })}
+              onClick={edit}
+            >
+              <Icon name="edit" />
+            </button>
+          )}
+          {remove && (
+            <button
+              aria-label={t("Delete {name}", { name: entry.description })}
+              onClick={remove}
+            >
+              <Icon name="trash" />
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -334,7 +345,12 @@ export function Dashboard({
                     entry={entry}
                     edit={() => edit(forms.transaction(entry))}
                     remove={() =>
-                      remove("/transactions/" + entry.id, entry.description)
+                      remove(
+                        entry.movement_id
+                          ? "/movements/" + entry.movement_id
+                          : "/transactions/" + entry.id,
+                        entry.description,
+                      )
                     }
                   />
                 ))

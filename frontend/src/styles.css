@@ -806,3 +806,42 @@ button:focus-visible {
   padding: 12px;
   margin: 12px 0;
 }
+
+/* Budget actions need their own layout so spacing survives narrow screens. */
+[data-route="budgets"] .section-nav .chip {
+  flex: 1;
+  min-height: 42px;
+}
+[data-route="budgets"] .budget-overview > div:not(.progress) {
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+[data-route="budgets"] .budget-line {
+  flex-wrap: wrap;
+  gap: 10px;
+}
+[data-route="budgets"] .budget-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 0 auto;
+}
+[data-route="budgets"] .budget-actions .text-button {
+  min-height: 40px;
+  padding: 8px 10px;
+}
+[data-route="budgets"] .toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 24px 0;
+}
+[data-route="budgets"] .toolbar > button {
+  flex: 1 1 145px;
+  min-height: 44px;
+  padding: 12px 16px;
+  font-size: 13px;
+}
+[data-route="budgets"] .modern-plan-details {
+  margin-top: 0;
+}

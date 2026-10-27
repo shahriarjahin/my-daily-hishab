@@ -70,18 +70,20 @@ export function Budgets({
               <span className={b.spent > b.amount ? "negative" : "muted"}>
                 {money(b.amount - b.spent)} {t("Remaining")}
               </span>
-              <button
-                className="text-button"
-                onClick={() => edit(forms.budget(b))}
-              >
-                {t("Edit")}
-              </button>
-              <button
-                className="text-button"
-                onClick={() => remove("/budgets/" + b.id, b.category)}
-              >
-                {t("Delete")}
-              </button>
+              <div className="budget-actions">
+                <button
+                  className="text-button"
+                  onClick={() => edit(forms.budget(b))}
+                >
+                  {t("Edit")}
+                </button>
+                <button
+                  className="text-button"
+                  onClick={() => remove("/budgets/" + b.id, b.category)}
+                >
+                  {t("Delete")}
+                </button>
+              </div>
             </div>
           </Card>
         ))}

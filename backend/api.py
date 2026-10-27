@@ -174,8 +174,8 @@ def require_row(session, model, row_id):
 @router.get("/state")
 def get_state(session: Session = Depends(get_session)):
     from .ai import public_status
-    from .finance import finance_state, wallet_balance
-    entries = session.exec(select(Transaction).order_by(Transaction.date.desc(), Transaction.id.desc())).all()
+    from .finance import finance_state, wallet_balance, reporting_entries
+    entries = reporting_entries(session)
     wallets = session.exec(select(Wallet).order_by(Wallet.id)).all()
     settings = session.get(AppSetting, 1) or AppSetting()
     month = now().strftime("%Y-%m")
@@ -184,7 +184,7 @@ def get_state(session: Session = Depends(get_session)):
         spent = total(t.amount for t in entries if t.type == "expense" and t.category == budget.category and local_date(t.date).strftime("%Y-%m") == month)
         budgets.append({"id": budget.id, "category": budget.category, "amount": budget.amount, "spent": spent})
     return {
-        "transactions": [transaction_dict(t) for t in entries],
+        "transactions": [{**transaction_dict(t), **({"movement_id": t.movement_id} if hasattr(t, "movement_id") else {})} for t in entries],
         "wallets": [{"id": w.id, "name": w.name, "opening_balance": w.opening_balance,
                      "balance": wallet_balance(session, w.id)} for w in wallets],
         "budgets": budgets,
@@ -311,6 +311,7 @@ def edit_settings(body: SettingsInput, session: Session = Depends(get_session)):
 
 @router.get("/export.csv")
 def export_csv(session: Session = Depends(get_session)):
+    from .finance import reporting_entries
     output = io.StringIO(newline="")
     writer = csv.writer(output)
     writer.writerow(["Date", "Description", "Type", "Category", "Amount (BDT)", "Wallet"])
@@ -318,6 +319,6 @@ def export_csv(session: Session = Depends(get_session)):
     def safe(value):
         value = str(value)
         return "'" + value if value.lstrip().startswith(("=", "+", "-", "@", "\t", "\r")) else value
-    for row in session.exec(select(Transaction).order_by(Transaction.date.desc())).all():
+    for row in reporting_entries(session):
         writer.writerow([local_date(row.date).isoformat(), safe(row.description), row.type, safe(row.category), f"{row.amount:.2f}", safe(wallets.get(row.wallet_id, ""))])
     return Response("\ufeff" + output.getvalue(), media_type="text/csv; charset=utf-8", headers={"Content-Disposition": 'attachment; filename="hishab-transactions.csv"'})

@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { useStore } from "../context";
 import { Title, Card, Button, Progress, Empty } from "../components/UI";
 import { Icon } from "../components/Icon";
+import { TransactionRow } from "./Dashboard";
 import { formFactory, type Editor } from "../forms";
 import { day, walletLogo, total } from "../utils";
 export function Wealth({
@@ -10,8 +12,13 @@ export function Wealth({
   edit: Editor;
   remove: (path: string, label: string) => void;
 }) {
+  const [repaymentLimit, setRepaymentLimit] = useState(100);
   const { state: s, route, t, money, navigate } = useStore(),
-    forms = formFactory(s!);
+    forms = formFactory(s!),
+    activeLoans = s!.loans.filter((loan) => loan.amount > loan.repaid),
+    repayments = s!.movements
+      .filter((m) => m.kind === "repayment")
+      .sort((a, b) => Date.parse(b.date) - Date.parse(a.date) || b.id - a.id);
   return (
     <>
       <Title>
@@ -216,7 +223,7 @@ export function Wealth({
             {t("Add")} {t("Loans")}
           </Button>
           <div className="record-grid section-gap">
-            {s!.loans.map((l) => (
+            {activeLoans.map((l) => (
               <Card key={l.id} className="goal-card">
                 <div className="goal-card-header">
                   <h2>{l.party}</h2>
@@ -224,30 +231,32 @@ export function Wealth({
                     <span className="pill">
                       {t(l.direction === "borrowed" ? "Borrowed" : "Lent")}
                     </span>
+                    <button
+                      className="icon-button"
+                      aria-label={t("Edit {name}", { name: l.party })}
+                      onClick={() => edit(forms.loan(l))}
+                    >
+                      <Icon name="edit" />
+                    </button>
                     {!l.repaid &&
                       !s!.movements.some((m) => m.loan_id === l.id) && (
-                        <>
-                          <button
-                            className="icon-button"
-                            aria-label={t("Edit {name}", { name: l.party })}
-                            onClick={() => edit(forms.loan(l))}
-                          >
-                            <Icon name="edit" />
-                          </button>
-                          <button
-                            className="icon-button goal-delete"
-                            aria-label={t("Delete {name}", { name: l.party })}
-                            onClick={() => remove("/loans/" + l.id, l.party)}
-                          >
-                            <Icon name="trash" />
-                          </button>
-                        </>
+                        <button
+                          className="icon-button goal-delete"
+                          aria-label={t("Delete {name}", { name: l.party })}
+                          onClick={() => remove("/loans/" + l.id, l.party)}
+                        >
+                          <Icon name="trash" />
+                        </button>
                       )}
                   </div>
                 </div>
                 <strong className="insight-total">
                   {money(l.amount - l.repaid)}
                 </strong>
+                <p className="muted">
+                  {t("Initial amount")}: {money(l.amount)} · {t("Repaid")}:{" "}
+                  {money(l.repaid)}
+                </p>
                 <p className="muted">
                   {t("Date")}: {day(l.date)} {l.due_date && " · " + l.due_date}
                 </p>
@@ -260,6 +269,39 @@ export function Wealth({
               </Card>
             ))}
           </div>
+          {!activeLoans.length && <Empty text="No outstanding loans" />}
+          {repayments.length > 0 && (
+            <section
+              className="modern-activity section-gap"
+              aria-label={t("Repayments")}
+            >
+              <h2>{t("Repayments")}</h2>
+              {repayments.slice(0, repaymentLimit).map((m) => (
+                <TransactionRow
+                  key={m.id}
+                  showDate
+                  entry={{
+                    id: -m.id,
+                    movement_id: m.id,
+                    description: m.description,
+                    amount: m.amount,
+                    category: "Loan repayment",
+                    date: m.date,
+                    wallet_id: (m.from_wallet_id ?? m.to_wallet_id)!,
+                    type: m.from_wallet_id != null ? "expense" : "income",
+                  }}
+                />
+              ))}
+              {repayments.length > repaymentLimit && (
+                <Button
+                  secondary
+                  onClick={() => setRepaymentLimit((n) => n + 100)}
+                >
+                  {t("Show more")}
+                </Button>
+              )}
+            </section>
+          )}
         </>
       )}
       {route === "regulars" && (
@@ -353,7 +395,6 @@ export function Wealth({
         </>
       )}
       {((route === "goals" && !s!.goals.length) ||
-        (route === "loans" && !s!.loans.length) ||
         (route === "regulars" && !s!.regulars.length)) && <Empty />}
     </>
   );

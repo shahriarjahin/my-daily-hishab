@@ -1,6 +1,7 @@
 """Cloud workspace planning, categories, earmarks and non-income money movements."""
 import calendar
 import json
+from types import SimpleNamespace
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Literal
@@ -39,11 +40,22 @@ def require_funds(session, wallet_id, amount):
         raise HTTPException(422, "This wallet has insufficient unreserved money. Release savings or choose another wallet.")
 
 
+def reporting_entries(session):
+    """Repayment expenses are views of movements, never a second wallet debit."""
+    entries = list(rows(session, Transaction))
+    for m in rows(session, Movement):
+        if m.kind == "repayment" and m.from_wallet_id is not None:
+            entries.append(SimpleNamespace(id=-m.id, description=m.description, amount=m.amount,
+                category="Loan repayment", type="expense", wallet_id=m.from_wallet_id,
+                date=m.date, quantity=None, unit="", movement_id=m.id))
+    return sorted(entries, key=lambda t: (local_date(t.date), t.id), reverse=True)
+
+
 def finance_state(session):
     today = now().date()
     month = today.isoformat()[:7]
     settings = session.get(AppSetting, 1) or AppSetting()
-    entries = [t for t in rows(session, Transaction) if local_date(t.date).strftime("%Y-%m") == month]
+    entries = [t for t in reporting_entries(session) if local_date(t.date).strftime("%Y-%m") == month]
     expenses = [t for t in entries if t.type == "expense"]
     spent = total(t.amount for t in expenses)
     income = total(t.amount for t in entries if t.type == "income")
@@ -61,7 +73,7 @@ def finance_state(session):
     groups = []
     for bucket in ("needs", "wants", "savings"):
         percent = getattr(settings, bucket + "_percent")
-        amount = monthly_saved if bucket == "savings" else total(t.amount for t in expenses if categories.get(t.category) and categories[t.category].bucket == bucket)
+        amount = monthly_saved if bucket == "savings" else total(t.amount for t in expenses if (categories[t.category].bucket if categories.get(t.category) else "needs") == bucket)
         groups.append({"name": bucket, "percent": percent, "target": round(basis * percent / 100, 2), "spent": amount})
     loans = rows(session, Loan)
     owed = total(l.amount - l.repaid for l in loans if l.direction == "borrowed")
@@ -393,9 +405,27 @@ def correctable_loan(session, loan_id):
 
 @router.put("/loans/{loan_id}")
 def edit_existing_loan(loan_id: int, body: LoanInput, session: Session = Depends(get_session)):
-    loan = correctable_loan(session, loan_id)
+    loan = require_row(session, Loan, loan_id)
     if body.affect_wallet:
         raise HTTPException(422, "An existing loan correction must not change wallet balances.")
+    movements = [m for m in rows(session, Movement) if m.loan_id == loan_id]
+    if body.amount < loan.repaid:
+        raise HTTPException(422, "Initial amount cannot be lower than the amount already repaid.")
+    if movements and (body.direction != loan.direction or local_date(body.date) != local_date(loan.date)):
+        raise HTTPException(422, "Direction and date cannot change after wallet movements. Edit the initial amount, name, due date or note.")
+    originals = [m for m in movements if m.kind == "loan"]
+    if len(originals) > 1:
+        raise HTTPException(422, "This loan has multiple initial movements. Correct its records first.")
+    if originals:
+        original = originals[0]
+        delta = total([body.amount, -original.amount])
+        if delta > 0 and original.from_wallet_id:
+            require_funds(session, original.from_wallet_id, delta)
+        if delta < 0 and original.to_wallet_id:
+            require_funds(session, original.to_wallet_id, -delta)
+        original.amount = body.amount
+        original.description = ("Borrowed from " if body.direction == "borrowed" else "Lent to ") + body.party
+        session.add(original)
     for key, value in body.model_dump(exclude={"wallet_id", "affect_wallet"}).items():
         setattr(loan, key, value)
     session.add(loan)

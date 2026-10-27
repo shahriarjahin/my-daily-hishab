@@ -19,7 +19,9 @@ it("maps model categories to active categories and assigns only the chosen walle
     amount: 100,
   });
   expect(r.provider).toBe("On-device AI");
-  expect(s.transactions.length).toBe(demo.transactions.length);
+  expect(s.transactions.filter((r) => !r.movement_id).length).toBe(
+    demo.transactions.length,
+  );
 });
 it("uses income categories for income even when the model uses gift", () => {
   expect(

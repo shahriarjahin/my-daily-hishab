@@ -12,6 +12,7 @@ from .security import router as security_router
 from .api import router
 from .integrations import router as integration_router
 from .finance import router as finance_router
+from .statements import router as statement_router
 from . import cloud
 
 _HERE = Path(__file__).parent
@@ -28,6 +29,7 @@ app.include_router(auth_router)
 app.include_router(security_router)
 app.include_router(integration_router)
 app.include_router(finance_router)
+app.include_router(statement_router)
 app.mount("/static", StaticFiles(directory=str(_HERE / "static")), name="static")
 react_directory = _HERE / "static" / "react"
 # The committed production bundle keeps Vercel's Python build independent of Node.

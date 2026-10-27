@@ -342,7 +342,11 @@ export function formFactory(s: WorkspaceState) {
           ]),
           { name: "party", label: "Party" },
           select("direction", "Direction", opts(["borrowed", "lent"])),
-          amount(),
+          {
+            ...amount(),
+            label: existing ? "Initial amount" : "Amount",
+            min: existing ? Math.max(0.01, existing.repaid) : 0.01,
+          },
           select("wallet_id", "Wallet", wallets),
           { name: "date", label: "Date", type: "date" },
           {
@@ -354,14 +358,25 @@ export function formFactory(s: WorkspaceState) {
           { name: "note", label: "Note", required: false },
         ] as Field[]
       ).filter(
-        (f) => !existing || !["affect_wallet", "wallet_id"].includes(f.name),
+        (f) =>
+          !existing ||
+          (!["affect_wallet", "wallet_id"].includes(f.name) &&
+            !(
+              s.movements.some((m) => m.loan_id === existing.id) &&
+              ["direction", "date"].includes(f.name)
+            )),
       ),
-      note: "For an old loan already spent, select Existing loan and enter only the outstanding amount. Wallet stays unchanged.",
+      note: existing
+        ? "Changing the initial amount adjusts its original wallet entry. It cannot be lower than the amount already repaid."
+        : "For an old loan already spent, select Existing loan and enter only the outstanding amount. Wallet stays unchanged.",
       prepare: (v) => ({
         ...moneyFields(v),
         affect_wallet: v.affect_wallet === "true",
         wallet_id: v.affect_wallet === "false" ? null : Number(v.wallet_id),
-        date: dated(String(v.date), existing?.date),
+        date:
+          existing && s.movements.some((m) => m.loan_id === existing.id)
+            ? existing.date
+            : dated(String(v.date), existing?.date),
         due_date: v.due_date || null,
       }),
     }),

@@ -8,6 +8,7 @@ export interface Wallet {
   created_at?: string;
 }
 export interface Transaction {
+  movement_id?: number;
   id: number;
   description: string;
   amount: number;

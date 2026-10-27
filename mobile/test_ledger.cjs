@@ -107,3 +107,12 @@ test('loan movements use the selected date and existing debts can be corrected s
  w=change(fresh(),'/loans','POST',{...body,affect_wallet:false});w=change(w,'/loans/1','PUT',{...body,amount:200,affect_wallet:false});assert.equal(w.loans[0].amount,200);assert.equal(ledger.balance(w,1),0);
  w=change(w,'/loans/1','DELETE');assert.equal(w.loans.length,0);
 });
+
+test('repayment expense is derived once; principal correction preserves repayments',()=>{
+ let w=change(fresh(),'/loans','POST',{party:'Bank',direction:'borrowed',amount:1000,wallet_id:1,date:'2026-10-01T10:00:00+06:00'});
+ w=change(w,'/loans/1/repayments','POST',{amount:100,wallet_id:1});
+ const current=ledger.state(w);assert.equal(current.planning.spent,100);assert.equal(current.transactions[0].movement_id,2);assert.equal(w.transactions.length,0);assert.equal(ledger.balance(w,1),900);
+ w=change(w,'/loans/1','PUT',{...w.loans[0],affect_wallet:false,amount:1200});assert.equal(ledger.balance(w,1),1100);assert.equal(w.loans[0].repaid,100);
+ assert.throws(()=>change(w,'/loans/1','PUT',{...w.loans[0],affect_wallet:false,amount:99}));
+ w=change(w,'/movements/2','DELETE');assert.equal(ledger.state(w).planning.spent,0);assert.equal(ledger.balance(w,1),1200);
+});

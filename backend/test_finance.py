@@ -75,7 +75,7 @@ class FinanceTests(unittest.TestCase):
         self.client.delete('/api/savings/'+str(state['savings'][0]['id']), headers=self.headers)
         self.assertEqual(self.get_state()['planning']['available'], 1000)
 
-    def test_loans_repayments_are_not_income_or_expenses(self):
+    def test_borrowed_repayments_are_expenses_but_never_income(self):
         self.fund()
         result = self.post('/loans', {'party': 'Friend', 'direction': 'borrowed', 'amount': 500, 'wallet_id': 1})
         self.assertEqual(result.status_code, 201, result.text)
@@ -92,7 +92,7 @@ class FinanceTests(unittest.TestCase):
         self.assertEqual(state['planning']['receivable'], 100)
         self.assertEqual(state['planning']['net_position'], 1000)
         self.assertEqual(state['planning']['income'], 0)
-        self.assertEqual(state['planning']['spent'], 0)
+        self.assertEqual(state['planning']['spent'], 200)
 
     def test_category_rename_archive_and_cloud_roundtrip(self):
         category = {'name': 'Groceries', 'kind': 'expense', 'bucket': 'needs', 'icon': 'shopping', 'color': '#123456', 'archived': False}

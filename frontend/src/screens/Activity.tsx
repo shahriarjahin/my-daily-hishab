@@ -5,7 +5,8 @@ import { Icon } from "../components/Icon";
 import { TransactionRow } from "./Dashboard";
 import { formFactory, type Editor } from "../forms";
 import { day, time } from "../utils";
-import { exportFile } from "../api";
+import { exportFile, native } from "../api";
+import { Statement } from "../components/Statement";
 export function Activity({
   edit,
   remove,
@@ -24,6 +25,7 @@ export function Activity({
     [from, setFrom] = useState(""),
     [to, setTo] = useState(""),
     [advanced, setAdvanced] = useState(false),
+    [statement, setStatement] = useState(false),
     [visible, setVisible] = useState(100);
   useEffect(
     () => setVisible(100),
@@ -35,12 +37,14 @@ export function Activity({
   week.setUTCDate(week.getUTCDate() - ((week.getUTCDay() + 6) % 7));
   const all = [
     ...s!.transactions.map((r) => ({ ...r, kind: r.type })),
-    ...s!.movements.map((r) => ({
-      ...r,
-      type: r.kind,
-      category: "Wallet movement",
-      wallet_id: r.from_wallet_id || r.to_wallet_id,
-    })),
+    ...s!.movements
+      .filter((r) => !(r.kind === "repayment" && r.from_wallet_id != null))
+      .map((r) => ({
+        ...r,
+        type: r.kind,
+        category: "Wallet movement",
+        wallet_id: r.from_wallet_id || r.to_wallet_id,
+      })),
     ...s!.wallet_openings.map((r) => ({
       ...r,
       id: "opening-" + r.id,
@@ -56,7 +60,11 @@ export function Activity({
     .filter((r) => {
       const d = r.date ? day(r.date) : "";
       return (
-        (type === "all" || r.type === type) &&
+        (type === "all" ||
+          r.type === type ||
+          (type === "repayment" &&
+            "movement_id" in r &&
+            r.movement_id != null)) &&
         (!wallet ||
           r.wallet_id === Number(wallet) ||
           ("to_wallet_id" in r && r.to_wallet_id === Number(wallet))) &&
@@ -69,8 +77,6 @@ export function Activity({
           [
             r.description,
             r.category,
-            t(r.category),
-            t(r.type),
             r.amount,
             s!.wallets.find((w) => w.id === r.wallet_id)?.name,
           ]
@@ -201,13 +207,15 @@ export function Activity({
           </select>
           <button
             className="text-button"
-            aria-label={t("Export")}
-            onClick={csv}
+            aria-label={t(native ? "Export" : "PDF statement")}
+            title={t(native ? "Export" : "PDF statement")}
+            onClick={native ? csv : () => setStatement(true)}
           >
             <Icon name="download" />
           </button>
         </div>
       </div>
+      {statement && <Statement close={() => setStatement(false)} />}
       {advanced && (
         <Card>
           <div className="form-grid">
@@ -232,7 +240,12 @@ export function Activity({
                 onChange={(e) => setCategory(e.target.value)}
               >
                 <option value="">{t("All")}</option>
-                {s!.categories.map((c) => (
+                {Array.from(
+                  new Set([
+                    ...s!.categories,
+                    ...s!.transactions.map((r) => r.category),
+                  ]),
+                ).map((c) => (
                   <option key={c} value={c}>
                     {t(c)}
                   </option>
@@ -301,7 +314,12 @@ export function Activity({
                       )
                     }
                     remove={() =>
-                      remove("/transactions/" + r.id, r.description)
+                      remove(
+                        "movement_id" in r && r.movement_id
+                          ? "/movements/" + r.movement_id
+                          : "/transactions/" + r.id,
+                        r.description,
+                      )
                     }
                   />
                 ) : (
