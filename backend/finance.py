@@ -20,6 +20,17 @@ COLLECTIONS = {"category_details": Category, "movements": Movement, "goals": Goa
 
 
 def rows(session, model):
+    # When _row_cache is set (read-only requests), each table is queried at most once.
+    cache = getattr(session, "_row_cache", None)
+    if cache is not None:
+        key = model.__tablename__
+        if key not in cache:
+            user_id = getattr(session, "user_id", None)
+            if user_id and hasattr(model, "user_id"):
+                cache[key] = session.exec(select(model).where(model.user_id == user_id).order_by(model.id)).all()
+            else:
+                cache[key] = session.exec(select(model).order_by(model.id)).all()
+        return cache[key]
     user_id = getattr(session, "user_id", None)
     if user_id and hasattr(model, "user_id"):
         return session.exec(select(model).where(model.user_id == user_id).order_by(model.id)).all()
@@ -35,10 +46,32 @@ def find_category(session, name):
 
 
 def wallet_balance(session, wallet_id):
+    # When _balance_cache is set (read-only requests), return O(1) precomputed value.
+    precomputed = getattr(session, "_balance_cache", None)
+    if precomputed is not None:
+        return precomputed.get(wallet_id, 0)
     wallet = require_row(session, Wallet, wallet_id)
     return total([wallet.opening_balance] + [t.amount if t.type == "income" else -t.amount
         for t in rows(session, Transaction) if t.wallet_id == wallet_id] +
         [m.amount * ((m.to_wallet_id == wallet_id) - (m.from_wallet_id == wallet_id)) for m in rows(session, Movement)])
+
+
+def precompute_balances(session):
+    """Compute all wallet balances in a single O(W+T+M) pass and cache them."""
+    balances = {}
+    for w in rows(session, Wallet):
+        balances[w.id] = Decimal(str(w.opening_balance))
+    for t in rows(session, Transaction):
+        if t.wallet_id in balances:
+            amt = Decimal(str(t.amount))
+            balances[t.wallet_id] += amt if t.type == "income" else -amt
+    for m in rows(session, Movement):
+        amt = Decimal(str(m.amount))
+        if m.to_wallet_id is not None and m.to_wallet_id in balances:
+            balances[m.to_wallet_id] += amt
+        if m.from_wallet_id is not None and m.from_wallet_id in balances:
+            balances[m.from_wallet_id] -= amt
+    session._balance_cache = {k: float(v) for k, v in balances.items()}
 
 
 def available(session, wallet_id):

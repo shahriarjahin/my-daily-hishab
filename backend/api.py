@@ -178,7 +178,10 @@ def require_row(session, model, row_id):
 @router.get("/state")
 def get_state(session: Session = Depends(get_session)):
     from .ai import public_status
-    from .finance import finance_state, wallet_balance, reporting_entries
+    from .finance import finance_state, wallet_balance, reporting_entries, precompute_balances
+    # Enable request-scoped query cache: each table is loaded at most once.
+    session._row_cache = {}
+    precompute_balances(session)
     user_id = getattr(session, "user_id", None)
     entries = reporting_entries(session)
     wallets = session.exec(select(Wallet).where(Wallet.user_id == user_id).order_by(Wallet.id) if user_id else select(Wallet).order_by(Wallet.id)).all()
@@ -325,6 +328,7 @@ def edit_settings(body: SettingsInput, session: Session = Depends(get_session)):
 @router.get("/export.csv")
 def export_csv(session: Session = Depends(get_session)):
     from .finance import reporting_entries
+    session._row_cache = {}  # Cache for read-only request
     output = io.StringIO(newline="")
     writer = csv.writer(output)
     writer.writerow(["Date", "Description", "Type", "Category", "Amount (BDT)", "Wallet"])

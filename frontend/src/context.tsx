@@ -123,10 +123,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (saving.current) throw new Error("Wait for the current save.");
     saving.current = true;
     setBusy(true);
-    generation.current++;
+    const id = ++generation.current;
     try {
       const result = await api(path, method, body);
-      await refresh();
+      // Fast refresh: only re-fetch state, skip cloud/status round-trip.
+      try {
+        const next = await api<WorkspaceState>("/state");
+        if (id === generation.current) {
+          setState(next);
+          setError("");
+        }
+      } catch {}
       return result;
     } catch (e) {
       if (e instanceof ApiError && (e.status === 409 || e.status === 401))
