@@ -159,7 +159,11 @@ def ensure_wallet(session, wallet_id):
 
 
 def ensure_category(session, name):
-    category = session.exec(select(Category).where(Category.name == name)).first()
+    user_id = getattr(session, "user_id", None)
+    q = select(Category).where(Category.name == name)
+    if user_id:
+        q = q.where(Category.user_id == user_id)
+    category = session.exec(q).first()
     if category is None or category.archived:
         raise HTTPException(422, "Choose an active category.")
 
@@ -175,21 +179,23 @@ def require_row(session, model, row_id):
 def get_state(session: Session = Depends(get_session)):
     from .ai import public_status
     from .finance import finance_state, wallet_balance, reporting_entries
+    user_id = getattr(session, "user_id", None)
     entries = reporting_entries(session)
-    wallets = session.exec(select(Wallet).order_by(Wallet.id)).all()
-    settings = session.get(AppSetting, 1) or AppSetting()
+    wallets = session.exec(select(Wallet).where(Wallet.user_id == user_id).order_by(Wallet.id) if user_id else select(Wallet).order_by(Wallet.id)).all()
+    settings = session.get(AppSetting, 1) or AppSetting(user_id=user_id or "local")
     month = now().strftime("%Y-%m")
     budgets = []
-    for budget in session.exec(select(Budget).order_by(Budget.id)).all():
+    for budget in session.exec(select(Budget).where(Budget.user_id == user_id).order_by(Budget.id) if user_id else select(Budget).order_by(Budget.id)).all():
         spent = total(t.amount for t in entries if t.type == "expense" and t.category == budget.category and local_date(t.date).strftime("%Y-%m") == month)
         budgets.append({"id": budget.id, "category": budget.category, "amount": budget.amount, "spent": spent})
+    cats = session.exec(select(Category).where(Category.user_id == user_id) if user_id else select(Category)).all()
     return {
         "transactions": [{**transaction_dict(t), **({"movement_id": t.movement_id} if hasattr(t, "movement_id") else {})} for t in entries],
         "wallets": [{"id": w.id, "name": w.name, "opening_balance": w.opening_balance,
                      "balance": wallet_balance(session, w.id)} for w in wallets],
         "budgets": budgets,
-        "settings": settings.model_dump(exclude={"id"}),
-        "categories": [c.name for c in session.exec(select(Category)).all() if not c.archived],
+        "settings": settings.model_dump(exclude={"id", "user_id", "revision"}),
+        "categories": [c.name for c in cats if not c.archived],
         **finance_state(session),
         "configured": any(p["configured"] and p["enabled"] for p in public_status()["providers"]),
         "cloud_mode": hasattr(session, "revision"), "revision": getattr(session, "revision", None),
@@ -198,10 +204,11 @@ def get_state(session: Session = Depends(get_session)):
 
 @router.post("/transactions", status_code=201)
 def add_transactions(body: Batch, session: Session = Depends(get_session)):
+    user_id = getattr(session, "user_id", "local")
     for item in body.transactions:
         ensure_wallet(session, item.wallet_id)
         ensure_category(session, item.category)
-    rows = [Transaction(**item.model_dump()) for item in body.transactions]
+    rows = [Transaction(user_id=user_id, **item.model_dump()) for item in body.transactions]
     for row in rows:
         session.add(row)
     session.commit()
@@ -241,9 +248,11 @@ def delete_transaction(entry_id: int, session: Session = Depends(get_session)):
 
 @router.post("/wallets", status_code=201)
 def add_wallet(body: WalletInput, session: Session = Depends(get_session)):
-    if any(w.name.casefold() == body.name.casefold() for w in session.exec(select(Wallet)).all()):
+    from .finance import rows
+    if any(w.name.casefold() == body.name.casefold() for w in rows(session, Wallet)):
         raise HTTPException(409, "A wallet with that name already exists.")
-    row = Wallet(**body.model_dump(), created_at=now())
+    user_id = getattr(session, "user_id", "local")
+    row = Wallet(user_id=user_id, **body.model_dump(), created_at=now())
     session.add(row)
     session.commit()
     session.refresh(row)
@@ -253,34 +262,38 @@ def add_wallet(body: WalletInput, session: Session = Depends(get_session)):
 @router.patch("/wallets/{wallet_id}")
 def edit_wallet(wallet_id: int, body: dict, session: Session = Depends(get_session)):
     from pydantic import ValidationError
+    from .finance import rows, wallet_balance
     row = require_row(session, Wallet, wallet_id)
     try:
         data = WalletInput.model_validate({"name": row.name, "opening_balance": row.opening_balance, **body})
     except ValidationError:
         raise HTTPException(422, "Check the wallet name and opening balance.") from None
     if any(w.id != row.id and w.name.casefold() == data.name.casefold()
-           for w in session.exec(select(Wallet)).all()):
+           for w in rows(session, Wallet)):
         raise HTTPException(409, "A wallet with that name already exists.")
     row.name = data.name
     row.opening_balance = data.opening_balance
     session.add(row)
     session.commit()
     session.refresh(row)
-    entries = session.exec(select(Transaction).where(Transaction.wallet_id == row.id)).all()
-    from .finance import wallet_balance
     balance = wallet_balance(session, row.id)
     return {"id": row.id, "name": row.name, "opening_balance": row.opening_balance, "balance": balance}
 
 
 @router.put("/budgets")
 def set_budget(body: BudgetInput, session: Session = Depends(get_session)):
+    from .finance import find_category
+    user_id = getattr(session, "user_id", None)
     ensure_category(session, body.category)
-    category = session.exec(select(Category).where(Category.name == body.category)).first()
-    if category.bucket not in ("needs", "wants"):
+    category = find_category(session, body.category)
+    if category is None or category.bucket not in ("needs", "wants"):
         raise HTTPException(422, "Choose an expense category for a spending budget.")
-    row = session.exec(select(Budget).where(Budget.category == body.category)).first()
+    q = select(Budget).where(Budget.category == body.category)
+    if user_id:
+        q = q.where(Budget.user_id == user_id)
+    row = session.exec(q).first()
     if row is None:
-        row = Budget(**body.model_dump())
+        row = Budget(user_id=user_id or "local", **body.model_dump())
     else:
         row.amount = body.amount
     session.add(row)
@@ -306,7 +319,7 @@ def edit_settings(body: SettingsInput, session: Session = Depends(get_session)):
     session.add(row)
     session.commit()
     session.refresh(row)
-    return row.model_dump(exclude={"id"})
+    return row.model_dump(exclude={"id", "user_id", "revision"})
 
 
 @router.get("/export.csv")

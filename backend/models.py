@@ -1,6 +1,28 @@
-from sqlmodel import SQLModel, Field
+import sqlalchemy as sa
+from sqlmodel import SQLModel, Field, select, func
+from sqlalchemy import event
 from typing import Optional
 from datetime import datetime, timezone
+
+class UserID(sa.types.TypeDecorator):
+    impl = sa.types.String
+    cache_ok = True
+
+    def load_dialect_impl(self, dialect):
+        if dialect.name == "postgresql":
+            from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+            return dialect.type_descriptor(PG_UUID(as_uuid=False))
+        return dialect.type_descriptor(sa.types.String())
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return None
+        return str(value)
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return None
+        return str(value)
 
 class Income(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -18,6 +40,8 @@ class Expense(SQLModel, table=True):
 
 
 class Wallet(SQLModel, table=True):
+    __tablename__ = "wallets"
+    user_id: str = Field(default="local", primary_key=True, sa_type=UserID)
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
     opening_balance: float = 0
@@ -25,26 +49,33 @@ class Wallet(SQLModel, table=True):
 
 
 class Transaction(SQLModel, table=True):
+    __tablename__ = "transactions"
+    user_id: str = Field(default="local", primary_key=True, sa_type=UserID)
     id: Optional[int] = Field(default=None, primary_key=True)
     description: str
     amount: float
     category: str
     type: str
-    wallet_id: int = Field(foreign_key="wallet.id")
+    wallet_id: int
     date: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    legacy_key: Optional[str] = Field(default=None, unique=True)
+    legacy_key: Optional[str] = None
     quantity: Optional[float] = None
     unit: str = ""
 
 
 class Budget(SQLModel, table=True):
+    __tablename__ = "budgets"
+    user_id: str = Field(default="local", primary_key=True, sa_type=UserID)
     id: Optional[int] = Field(default=None, primary_key=True)
-    category: str = Field(unique=True)
+    category: str
     amount: float
 
 
 class AppSetting(SQLModel, table=True):
+    __tablename__ = "app_settings"
+    user_id: str = Field(default="local", primary_key=True, sa_type=UserID)
     id: int = Field(default=1, primary_key=True)
+    revision: int = Field(default=1)
     name: str = ""
     theme: str = "dark"
     language: str = "en"
@@ -63,12 +94,15 @@ class AppSetting(SQLModel, table=True):
 
 class LedgerMigration(SQLModel, table=True):
     """Keep import history even when the corresponding ledger row is deleted."""
+    user_id: str = Field(default="local", primary_key=True, sa_type=UserID)
     source_key: str = Field(primary_key=True)
 
 
 class Category(SQLModel, table=True):
+    __tablename__ = "categories"
+    user_id: str = Field(default="local", primary_key=True, sa_type=UserID)
     id: Optional[int] = Field(default=None, primary_key=True)
-    name: str = Field(unique=True)
+    name: str
     kind: str = "expense"
     bucket: str = "needs"
     color: str = "#93b4a0"
@@ -77,6 +111,8 @@ class Category(SQLModel, table=True):
 
 
 class Movement(SQLModel, table=True):
+    __tablename__ = "movements"
+    user_id: str = Field(default="local", primary_key=True, sa_type=UserID)
     id: Optional[int] = Field(default=None, primary_key=True)
     description: str
     amount: float
@@ -88,6 +124,8 @@ class Movement(SQLModel, table=True):
 
 
 class Goal(SQLModel, table=True):
+    __tablename__ = "goals"
+    user_id: str = Field(default="local", primary_key=True, sa_type=UserID)
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
     target: float
@@ -96,6 +134,8 @@ class Goal(SQLModel, table=True):
 
 
 class Saving(SQLModel, table=True):
+    __tablename__ = "savings"
+    user_id: str = Field(default="local", primary_key=True, sa_type=UserID)
     id: Optional[int] = Field(default=None, primary_key=True)
     amount: float
     category: str
@@ -106,6 +146,8 @@ class Saving(SQLModel, table=True):
 
 
 class Loan(SQLModel, table=True):
+    __tablename__ = "loans"
+    user_id: str = Field(default="local", primary_key=True, sa_type=UserID)
     id: Optional[int] = Field(default=None, primary_key=True)
     party: str
     direction: str
@@ -117,6 +159,8 @@ class Loan(SQLModel, table=True):
 
 
 class AdvisorMessage(SQLModel, table=True):
+    __tablename__ = "advisor_messages"
+    user_id: str = Field(default="local", primary_key=True, sa_type=UserID)
     id: Optional[int] = Field(default=None, primary_key=True)
     role: str
     content: str
@@ -125,14 +169,16 @@ class AdvisorMessage(SQLModel, table=True):
 
 
 class Regular(SQLModel, table=True):
+    __tablename__ = "regulars"
+    user_id: str = Field(default="local", primary_key=True, sa_type=UserID)
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
-    category: str = Field(unique=True)
+    category: str
     daily_limit: float = 0
     unit: str = "pcs"
 
 
-def default_categories():
+def default_categories(user_id="local"):
     names = ["Food", "Transport", "Shopping", "Utilities", "Health", "Education", "Entertainment", "Rent", "Gifts", "Travel", "Salary", "Business", "Savings", "Other",
              "Freelance", "Investment", "Allowance", "Other Income", "DPS / FDR", "Bank Deposit", "Provident Fund", "Gold & Assets", "Other Savings"]
     wants = {"Shopping", "Entertainment", "Gifts", "Travel"}
@@ -140,7 +186,7 @@ def default_categories():
     savings = {"Savings", "DPS / FDR", "Bank Deposit", "Provident Fund", "Gold & Assets", "Other Savings"}
     colors = ["#d5ad78", "#88afdb", "#c59ed8", "#c8cc88", "#d59399", "#a09bd5", "#d0aa86", "#86b5a8"]
     icons = {"Food": "food", "Transport": "transport", "Shopping": "shopping", "Utilities": "utilities", "Health": "health", "Education": "education", "Entertainment": "entertainment", "Rent": "rent", "Gifts": "gifts", "Travel": "travel", "Salary": "salary", "Business": "business"}
-    return [{"id": index + 1, "name": name, "kind": "both" if index < 14 else "income" if name in income else "savings",
+    return [{"user_id": user_id, "id": index + 1, "name": name, "kind": "both" if index < 14 else "income" if name in income else "savings",
         "bucket": "income" if name in income else "savings" if name in savings else "wants" if name in wants else "needs",
         "color": colors[index % len(colors)], "icon": icons.get(name, "savings" if name in savings else "salary" if name in income else "other"), "archived": False}
         for index, name in enumerate(names)]

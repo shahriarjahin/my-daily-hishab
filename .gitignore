@@ -78,3 +78,5 @@ ml/results/gguf_diag_preds/
 
 # Android native build intermediates
 /mobile/android/app/.cxx/
+output/
+docs/demo/*.zip

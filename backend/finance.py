@@ -20,7 +20,18 @@ COLLECTIONS = {"category_details": Category, "movements": Movement, "goals": Goa
 
 
 def rows(session, model):
+    user_id = getattr(session, "user_id", None)
+    if user_id and hasattr(model, "user_id"):
+        return session.exec(select(model).where(model.user_id == user_id).order_by(model.id)).all()
     return session.exec(select(model).order_by(model.id)).all()
+
+
+def find_category(session, name):
+    user_id = getattr(session, "user_id", None)
+    q = select(Category).where(Category.name == name)
+    if user_id and hasattr(Category, "user_id"):
+        q = q.where(Category.user_id == user_id)
+    return session.exec(q).first()
 
 
 def wallet_balance(session, wallet_id):
@@ -78,13 +89,14 @@ def finance_state(session):
     loans = rows(session, Loan)
     owed = total(l.amount - l.repaid for l in loans if l.direction == "borrowed")
     lent = total(l.amount - l.repaid for l in loans if l.direction == "lent")
-    return {**{key: [r.model_dump(mode="json") for r in rows(session, model)] for key, model in COLLECTIONS.items()},
+    return {**{key: [r.model_dump(mode="json", exclude={"user_id"}) for r in rows(session, model)] for key, model in COLLECTIONS.items()},
         "wallet_openings": [{"id": w.id, "amount": w.opening_balance, "name": w.name,
                              "date": w.created_at.isoformat() if w.created_at else None} for w in rows(session, Wallet) if w.opening_balance],
         "planning": {"month": month, "budget": cap, "spent": spent, "income": income, "income_basis": basis,
             "days_left": days_left, "daily_limit": daily_limit, "today_spent": today_spent,
             "today_remaining": max(0, total([daily_limit, -today_spent])), "remaining": max(0, total([cap, -spent])),
-            "forecast": round(spent / today.day * days, 2), "daily_average": round(spent / today.day, 2),
+            "forecast": float((Decimal(str(spent * days)) / today.day).quantize(Decimal(".01"), rounding="ROUND_HALF_UP")),
+            "daily_average": float((Decimal(str(spent)) / today.day).quantize(Decimal(".01"), rounding="ROUND_HALF_UP")),
             "monthly_saved": monthly_saved, "reserved": reserved, "available": total([cash, -reserved]),
             "safe_savings": max(0, total([cash, -reserved, -max(0, cap-spent), -owed])) if cap > 0 else 0,
             "owed": owed, "receivable": lent, "net_position": total([cash, lent, -owed]), "groups": groups,
@@ -189,7 +201,7 @@ def save_plan(body: PlanInput, session: Session = Depends(get_session)):
     for item in body.allocations or []:
         name = item.get("category")
         ensure_category(session, name)
-        category = session.exec(select(Category).where(Category.name == name)).first()
+        category = find_category(session, name)
         if category.bucket not in ("needs", "wants") or name in seen:
             raise HTTPException(422, "Choose each expense category only once.")
         seen.add(name)
@@ -318,12 +330,12 @@ class SavingInput(Input):
 def add_saving(body: SavingInput, session: Session = Depends(get_session)):
     require_funds(session, body.wallet_id, body.amount)
     ensure_category(session, body.category)
-    cat = session.exec(select(Category).where(Category.name == body.category)).first()
+    cat = find_category(session, body.category)
     if cat.bucket != "savings":
         raise HTTPException(422, "Choose a savings category.")
     if body.goal_id:
         require_row(session, Goal, body.goal_id)
-    session.add(Saving(**body.model_dump(), date=now()))
+    session.add(Saving(user_id=getattr(session, "user_id", "local"), **body.model_dump(), date=now()))
     session.commit()
     return {"saved": True}
 
@@ -332,7 +344,7 @@ def add_saving(body: SavingInput, session: Session = Depends(get_session)):
 def edit_saving(saving_id: int, body: SavingInput, session: Session = Depends(get_session)):
     saving = require_row(session, Saving, saving_id)
     ensure_category(session, body.category)
-    cat = session.exec(select(Category).where(Category.name == body.category)).first()
+    cat = find_category(session, body.category)
     if cat.bucket != "savings":
         raise HTTPException(422, "Choose a savings category.")
     ensure_wallet(session, body.wallet_id)
@@ -477,10 +489,10 @@ def add_regular(body: RegularInput, session: Session = Depends(get_session)):
     ensure_category(session, body.category)
     if any(r.category == body.category for r in rows(session, Regular)):
         raise HTTPException(409, "This category already has a regular tracker.")
-    category = session.exec(select(Category).where(Category.name == body.category)).first()
+    category = find_category(session, body.category)
     if category.bucket not in ("needs", "wants"):
         raise HTTPException(422, "Choose an expense category.")
-    session.add(Regular(**body.model_dump()))
+    session.add(Regular(user_id=getattr(session, "user_id", "local"), **body.model_dump()))
     session.commit()
     return {"saved": True}
 
@@ -489,7 +501,7 @@ def add_regular(body: RegularInput, session: Session = Depends(get_session)):
 def edit_regular(regular_id: int, body: RegularInput, session: Session = Depends(get_session)):
     row = require_row(session, Regular, regular_id)
     ensure_category(session, body.category)
-    category = session.exec(select(Category).where(Category.name == body.category)).first()
+    category = find_category(session, body.category)
     if category.bucket not in ("needs", "wants"):
         raise HTTPException(422, "Choose an expense category.")
     if any(r.id != regular_id and r.category == body.category for r in rows(session, Regular)):

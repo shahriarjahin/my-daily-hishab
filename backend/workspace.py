@@ -4,7 +4,11 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import delete
 from sqlmodel import Session, select
 
-from .models import AppSetting, Budget, LedgerMigration, Transaction, Wallet, Category, default_categories
+from .database import ScopedSession
+from .models import (
+    AppSetting, Budget, LedgerMigration, Transaction, Wallet, Category, default_categories,
+    Saving, Movement, Regular, Goal, Loan, AdvisorMessage
+)
 
 
 class Workspace(BaseModel):
@@ -32,14 +36,15 @@ class Workspace(BaseModel):
 
 def export_workspace(session):
     from .api import transaction_dict
-    from .finance import COLLECTIONS
-    settings = session.get(AppSetting, 1) or AppSetting()
+    from .finance import COLLECTIONS, rows
+    user_id = getattr(session, "user_id", "local")
+    settings = session.get(AppSetting, 1) or AppSetting(user_id=user_id)
     return {"schema_version": 1,
-        "wallets": [w.model_dump(mode="json") for w in session.exec(select(Wallet)).all()],
-        "transactions": [transaction_dict(t) for t in session.exec(select(Transaction)).all()],
-        "budgets": [{"id": b.id, "category": b.category, "amount": b.amount} for b in session.exec(select(Budget)).all()],
-        "settings": settings.model_dump(exclude={"id"}),
-        **{key: [r.model_dump(mode="json") for r in session.exec(select(model)).all()] for key, model in COLLECTIONS.items()}}
+        "wallets": [w.model_dump(mode="json", exclude={"user_id"}) for w in rows(session, Wallet)],
+        "transactions": [transaction_dict(t) for t in rows(session, Transaction)],
+        "budgets": [{"id": b.id, "category": b.category, "amount": b.amount} for b in rows(session, Budget)],
+        "settings": settings.model_dump(exclude={"id", "user_id", "revision"}),
+        **{key: [r.model_dump(mode="json", exclude={"user_id"}) for r in rows(session, model)] for key, model in COLLECTIONS.items()}}
 
 
 def validate_workspace(data):
@@ -50,7 +55,7 @@ def validate_workspace(data):
         parsed.category_details = default_categories()
     cat_names, cat_ids, exact_names = set(), set(), set()
     for row in parsed.category_details:
-        valid = CategoryInput.model_validate({k: v for k, v in row.items() if k != "id"})
+        valid = CategoryInput.model_validate({k: v for k, v in row.items() if k not in ("id", "user_id")})
         if type(row.get("id")) is not int or row["id"] <= 0 or row["id"] in cat_ids or valid.name.casefold() in cat_names:
             raise ValueError("Invalid or duplicate category.")
         cat_ids.add(row["id"])
@@ -61,7 +66,7 @@ def validate_workspace(data):
         row_id = row.get("id")
         if type(row_id) is not int or row_id <= 0 or row_id in wallet_ids:
             raise ValueError("Invalid or duplicate wallet id.")
-        valid = WalletInput.model_validate({k: v for k, v in row.items() if k not in ("id", "created_at")})
+        valid = WalletInput.model_validate({k: v for k, v in row.items() if k not in ("id", "user_id", "created_at")})
         if row.get("created_at"):
             from datetime import datetime
             datetime.fromisoformat(row["created_at"])
@@ -75,7 +80,7 @@ def validate_workspace(data):
         if type(entry_id) is not int or entry_id <= 0 or entry_id in entry_ids:
             raise ValueError("Invalid or duplicate transaction id.")
         entry_ids.add(entry_id)
-        valid = TransactionInput.model_validate({k: v for k, v in row.items() if k != "id"})
+        valid = TransactionInput.model_validate({k: v for k, v in row.items() if k not in ("id", "user_id")})
         if valid.wallet_id not in wallet_ids:
             raise ValueError("Transaction references a missing wallet.")
         if valid.category not in exact_names:
@@ -85,7 +90,7 @@ def validate_workspace(data):
         bid = row.get("id")
         if type(bid) is not int or bid <= 0 or bid in budget_ids:
             raise ValueError("Invalid budget id.")
-        valid = BudgetInput.model_validate({k: v for k, v in row.items() if k != "id"})
+        valid = BudgetInput.model_validate({k: v for k, v in row.items() if k not in ("id", "user_id")})
         if valid.category not in exact_names:
             raise ValueError("Budget references a missing category.")
         if valid.category in categories:
@@ -93,8 +98,8 @@ def validate_workspace(data):
         budget_ids.add(bid)
         categories.add(valid.category)
     plan_fields = set(PlanInput.model_fields) - {"allocations"}
-    SettingsInput.model_validate({k: v for k, v in parsed.settings.items() if k not in plan_fields})
-    PlanInput.model_validate({k: v for k, v in parsed.settings.items() if k in plan_fields})
+    SettingsInput.model_validate({k: v for k, v in parsed.settings.items() if k not in plan_fields and k not in ("id", "user_id", "revision")})
+    PlanInput.model_validate({k: v for k, v in parsed.settings.items() if k in plan_fields and k not in ("id", "user_id", "revision")})
     if any(value is None for value in parsed.settings.values()):
         raise ValueError("Settings cannot be null.")
     goal_ids = {r.get("id") for r in parsed.goals}
@@ -112,9 +117,9 @@ def validate_workspace(data):
             if "amount" in row:
                 money(row["amount"])
             if key == "goals":
-                GoalInput.model_validate({k: v for k, v in row.items() if k != "id"})
+                GoalInput.model_validate({k: v for k, v in row.items() if k not in ("id", "user_id")})
             if key == "regulars":
-                valid = RegularInput.model_validate({k: v for k, v in row.items() if k != "id"})
+                valid = RegularInput.model_validate({k: v for k, v in row.items() if k not in ("id", "user_id")})
                 if valid.category in regular_categories:
                     raise ValueError("Duplicate regular category.")
                 regular_categories.add(valid.category)
@@ -142,28 +147,34 @@ def validate_workspace(data):
 def import_workspace(session, raw):
     from .api import TransactionInput
     from .finance import COLLECTIONS
+    user_id = getattr(session, "user_id", "local")
     data = validate_workspace(raw)
     # Validation is complete before any row is replaced. This operation is one transaction.
-    for model in (Transaction, Budget, AppSetting, Wallet, *COLLECTIONS.values()):
-        session.exec(delete(model))
+    for model in (Transaction, Budget, Saving, Movement, Regular, Goal, Loan, AdvisorMessage, Wallet, Category, AppSetting):
+        if hasattr(model, "user_id"):
+            session.exec(delete(model).where(model.user_id == user_id))
+        else:
+            session.exec(delete(model))
     for row in data["wallets"]:
-        session.add(Wallet.model_validate(row))
+        session.add(Wallet.model_validate({**row, "user_id": user_id}))
     session.flush()
     for row in data["transactions"]:
         fields = TransactionInput.model_validate({k: v for k, v in row.items() if k != "id"}).model_dump()
-        session.add(Transaction(id=row["id"], **fields))
+        session.add(Transaction(user_id=user_id, id=row["id"], **fields))
     for row in data["budgets"]:
-        session.add(Budget(**row))
-    session.add(AppSetting(id=1, **data["settings"]))
+        session.add(Budget(user_id=user_id, **row))
+    s_fields = {k: v for k, v in data["settings"].items() if k != "user_id"}
+    session.add(AppSetting(user_id=user_id, id=1, **s_fields))
     for key, model in COLLECTIONS.items():
-        for row in data[key]:
-            session.add(model.model_validate(row))
+        for row in data.get(key, []):
+            m_fields = {k: v for k, v in row.items() if k != "user_id"}
+            session.add(model.model_validate({**m_fields, "user_id": user_id}))
 
 
-class CloudSession(Session):
+class CloudSession(ScopedSession):
     """A per-request workspace; no ledger data is persisted on the server filesystem."""
-    def __init__(self, bind, revision):
-        super().__init__(bind)
+    def __init__(self, bind, revision, user_id="local"):
+        super().__init__(bind, user_id=user_id)
         self.revision = revision
 
     def commit(self):

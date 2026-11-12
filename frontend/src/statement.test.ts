@@ -62,7 +62,7 @@ it("matches wallet cash exactly and does not count derived repayment expenses tw
 it("exports the full demo ledger without changing it or duplicating wallet movements", () => {
   const state=ledger.state(demo), before=JSON.stringify(state);
   const output=buildStatement(state,{period:"custom",start:"2000-01-01",end:"2030-01-01"},"2030-01-01");
-  const expected=new Intl.NumberFormat("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}).format(state.wallets.reduce((sum,w)=>sum+w.balance,0));
+  const expected=new Intl.NumberFormat("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}).format(state.wallets.reduce((sum: number, w: { balance: number })=>sum+w.balance,0));
   expect(output.closing).toBe(expected);
   expect(output.rows.length).toBeGreaterThan(3000);
   expect(JSON.stringify(output).length).toBeLessThan(9000000);

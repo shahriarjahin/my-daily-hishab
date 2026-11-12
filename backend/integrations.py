@@ -180,8 +180,10 @@ def update_wallet_balances(wallets, session):
             raise HTTPException(409, "An existing wallet needs a fresh balance preview before it can be updated.")
         if item.expected_balance is not None and item.expected_balance != preview["expected_balance"]:
             raise HTTPException(409, "A wallet changed since the preview. Extract again before applying balances.")
+    from .finance import rows
+    user_id = getattr(session, "user_id", "local")
     for item in wallets:
-        wallet = next((w for w in session.exec(select(Wallet)).all() if w.name.casefold() == item.name.casefold()), None)
+        wallet = next((w for w in rows(session, Wallet) if w.name.casefold() == item.name.casefold()), None)
         if wallet:
             from .finance import wallet_balance
             net = total([wallet_balance(session, wallet.id), -wallet.opening_balance])
@@ -190,7 +192,7 @@ def update_wallet_balances(wallets, session):
             except ValueError:
                 raise HTTPException(422, "This balance and the wallet's history exceed the supported amount range.") from None
         else:
-            wallet = Wallet(name=item.name, opening_balance=item.balance, created_at=now())
+            wallet = Wallet(user_id=user_id, name=item.name, opening_balance=item.balance, created_at=now())
         session.add(wallet)
     return previews
 
@@ -208,8 +210,9 @@ def save_reviewed_import(body: ReviewedImport, session: Session = Depends(get_se
         ensure_wallet(session, item.wallet_id)
         ensure_category(session, item.category)
     update_wallet_balances(body.wallets, session)
+    user_id = getattr(session, "user_id", "local")
     for item in body.transactions:
-        session.add(Transaction(**item.model_dump()))
+        session.add(Transaction(user_id=user_id, **item.model_dump()))
     session.commit()
     return {"saved": True}
 
@@ -251,6 +254,7 @@ def logout(response: Response):
 
 @router.get("/cloud/status")
 def cloud_status():
+    from . import database
     url, key = cloud.settings()
     identity = cloud.CURRENT_USER.get()
     status = {"configured": bool(url and key), "cloud_mode": cloud.cloud_mode(), "signed_in": bool(identity),
@@ -260,11 +264,22 @@ def cloud_status():
         status.update(mfa_required=True, factors=[f for f in identity["user"].get("factors",[]) if f.get("status")=="verified"])
         return status
     if identity:
-        try:
-            row = cloud.read_workspace()
-            status.update(revision=row["revision"], has_backup=row["data"] is not None, updated_at=row["updated_at"])
-        except HTTPException as error:
-            status.update(setup_required=True, message=error.detail)
+        user_id = identity["user"].get("id")
+        if database.is_relational() and database.is_uuid(user_id):
+            try:
+                eng = database.get_engine()
+                with database.ScopedSession(eng, user_id=user_id) as session:
+                    setting = session.get(AppSetting, 1)
+                    rev = setting.revision if setting else 1
+                    status.update(revision=rev, has_backup=True, updated_at=None)
+            except Exception as error:
+                status.update(setup_required=True, message=str(error))
+        else:
+            try:
+                row = cloud.read_workspace()
+                status.update(revision=row["revision"], has_backup=row["data"] is not None, updated_at=row["updated_at"])
+            except HTTPException as error:
+                status.update(setup_required=True, message=error.detail)
     return status
 
 
@@ -306,11 +321,38 @@ def health():
 
 @router.get("/cloud/workspace")
 def pull_workspace():
+    from . import database
+    identity = cloud.user()
+    user_id = identity["user"]["id"]
+    if database.is_relational() and database.is_uuid(user_id):
+        eng = database.get_engine()
+        with database.ScopedSession(eng, user_id=user_id) as session:
+            setting = session.get(AppSetting, 1)
+            rev = setting.revision if setting else 1
+            data = export_workspace(session)
+            return {"data": data, "revision": rev, "updated_at": None}
     return cloud.read_workspace()
 
 
 @router.post("/cloud/workspace")
 def push_workspace(body: ImportInput):
+    from . import database
+    identity = cloud.user()
+    user_id = identity["user"]["id"]
+    if database.is_relational() and database.is_uuid(user_id):
+        eng = database.get_engine()
+        with database.RelationalSession(eng, user_id=user_id) as session:
+            setting = session.get(AppSetting, 1)
+            current_rev = setting.revision if setting else 1
+            if current_rev != body.expected_revision:
+                raise HTTPException(409, "Your cloud workspace changed. Reload before importing.")
+            try:
+                data = validate_workspace(body.data)
+            except ValueError:
+                raise HTTPException(422, "Invalid workspace. Cloud records were not changed.") from None
+            import_workspace(session, data)
+            session.commit()
+            return {"revision": session.revision}
     current = cloud.read_workspace()
     if current["revision"] != body.expected_revision:
         raise HTTPException(409, "Your cloud workspace changed. Reload before importing.")
