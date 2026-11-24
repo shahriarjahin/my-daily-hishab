@@ -11,8 +11,13 @@ def build():
     static = frontend / 'public' / 'static'
     static.mkdir(parents=True, exist_ok=True)
     for name in ('hishab-logo-v2.png', 'hishab-icon-v2-192.png', 'hishab-icon-v2-512.png',
+                 'apple-touch-icon.png', 'apple-touch-icon-precomposed.png', 'icon-512.png',
                  'digitxbd-logo.png', 'developer-avatar.png', 'NotoSansBengali-400.ttf', 'NotoSansBengali-600.ttf', 'NotoSansBengali-OFL.txt'):
-        shutil.copyfile(ROOT / 'backend/static' / name, static / name)
+        if (ROOT / 'backend/static' / name).is_file():
+            shutil.copyfile(ROOT / 'backend/static' / name, static / name)
+    for root_icon in ('apple-touch-icon.png', 'apple-touch-icon-precomposed.png', 'icon-512.png'):
+        if (ROOT / 'backend/static' / root_icon).is_file():
+            shutil.copyfile(ROOT / 'backend/static' / root_icon, frontend / 'public' / root_icon)
     shutil.copytree(ROOT / 'backend/static/wallet-logos', static / 'wallet-logos', dirs_exist_ok=True)
     npm = shutil.which('npm.cmd') or shutil.which('npm')
     subprocess.run([npm, 'run', 'build'], cwd=frontend, check=True)

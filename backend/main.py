@@ -71,6 +71,26 @@ def manifest():
     return FileResponse(_HERE / "static" / "manifest.webmanifest", media_type="application/manifest+json")
 
 
+@app.get("/manifest.json")
+def manifest_json():
+    return FileResponse(_HERE / "static" / "manifest.webmanifest", media_type="application/manifest+json")
+
+
+@app.get("/apple-touch-icon.png")
+def apple_touch_icon():
+    return FileResponse(_HERE / "static" / "apple-touch-icon.png", media_type="image/png", headers={"Cache-Control": "public, max-age=86400"})
+
+
+@app.get("/apple-touch-icon-precomposed.png")
+def apple_touch_icon_precomposed():
+    return FileResponse(_HERE / "static" / "apple-touch-icon.png", media_type="image/png", headers={"Cache-Control": "public, max-age=86400"})
+
+
+@app.get("/icon-512.png")
+def icon_512():
+    return FileResponse(_HERE / "static" / "icon-512.png", media_type="image/png", headers={"Cache-Control": "public, max-age=86400"})
+
+
 @app.get("/sw.js")
 def service_worker():
     return FileResponse(_HERE / "static" / "sw.js", media_type="application/javascript", headers={"Service-Worker-Allowed": "/", "Cache-Control": "no-cache"})
