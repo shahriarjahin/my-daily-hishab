@@ -72,6 +72,7 @@ class ShortcutLogInput(Input):
     category: str | None = Field(default=None, max_length=60)
     type: Literal["expense", "income"] | None = None
     wallet_id: int | None = Field(default=None, gt=0, strict=True)
+    wallet: str | None = Field(default=None, max_length=60)
 
     @field_validator("amount", mode="before")
     @classmethod
@@ -81,12 +82,25 @@ class ShortcutLogInput(Input):
         return money(value)
 
 
-def _match_wallet(wallets: list[Wallet], hint: str | None, preferred_id: int | None) -> Wallet:
+def _match_wallet(
+    wallets: list[Wallet],
+    hint: str | None,
+    preferred_id: int | None,
+    preferred_name: str | None = None,
+) -> Wallet:
     if preferred_id is not None:
         found = next((w for w in wallets if w.id == preferred_id), None)
         if found:
             return found
         raise HTTPException(422, "Choose an existing wallet.")
+    if preferred_name and preferred_name.strip():
+        needle = preferred_name.strip().casefold()
+        found = next((w for w in wallets if w.name.casefold() == needle), None) or next(
+            (w for w in wallets if needle in w.name.casefold()), None
+        )
+        if found:
+            return found
+        raise HTTPException(422, f"Wallet '{preferred_name.strip()}' not found.")
     if hint:
         h = hint.casefold()
         found = next((w for w in wallets if h in w.name.casefold()), None)
@@ -101,6 +115,17 @@ def _match_wallet(wallets: list[Wallet], hint: str | None, preferred_id: int | N
     if not wallets:
         raise HTTPException(422, "Create a wallet first.")
     return wallets[0]
+
+
+@router.get("/wallets")
+def list_shortcut_wallets(session: Session = Depends(get_session)):
+    wallets = rows(session, Wallet)
+    counts: dict[int, int] = {}
+    for t in rows(session, Transaction):
+        counts[t.wallet_id] = counts.get(t.wallet_id, 0) + 1
+    ranked = sorted(wallets, key=lambda w: (-counts.get(w.id, 0), w.id))
+    names = [w.name for w in ranked]
+    return {"top_wallets": names[:3], "wallets": names}
 
 
 @router.get("/tokens")
@@ -170,7 +195,7 @@ def shortcut_log(body: ShortcutLogInput, session: Session = Depends(get_session)
     ts = now()
 
     if body.amount is not None:
-        wallet = _match_wallet(wallets, None, body.wallet_id)
+        wallet = _match_wallet(wallets, None, body.wallet_id, body.wallet)
         entry_type = body.type or "expense"
         desc = (body.description or "").strip()
         if body.category:
@@ -208,7 +233,7 @@ def shortcut_log(body: ShortcutLogInput, session: Session = Depends(get_session)
         raise HTTPException(422, "Could not detect an amount in that text. Example: 'Tea 20' or paste a bKash SMS.")
 
     if parsed["kind"] == "transfer":
-        from_wallet = _match_wallet(wallets, parsed.get("from_wallet_hint"), body.wallet_id)
+        from_wallet = _match_wallet(wallets, parsed.get("from_wallet_hint"), body.wallet_id, body.wallet)
         to_wallet = _match_wallet(wallets, parsed.get("to_wallet_hint") or "cash", None)
         if from_wallet.id == to_wallet.id and len(wallets) > 1:
             to_wallet = next(w for w in wallets if w.id != from_wallet.id)
@@ -247,7 +272,7 @@ def shortcut_log(body: ShortcutLogInput, session: Session = Depends(get_session)
             "balance": wallet_balance(session, from_wallet.id),
         }
 
-    wallet = _match_wallet(wallets, parsed.get("wallet_hint"), body.wallet_id)
+    wallet = _match_wallet(wallets, parsed.get("wallet_hint"), body.wallet_id, body.wallet)
     cat = parsed["category"]
     if cat not in active_cats:
         cat = suggest_category(parsed["description"], active_cats, parsed["type"])

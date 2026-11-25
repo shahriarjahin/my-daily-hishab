@@ -212,11 +212,19 @@ class ShortcutTokenTests(unittest.TestCase):
             exp_res = self.client.post(
                 "/api/shortcuts/log",
                 headers={"Authorization": f"Bearer {raw_token}"},
-                json={"text": "rickshaw 60"},
+                json={"text": "rickshaw 60", "wallet": "bKash"},
             )
             self.assertEqual(exp_res.status_code, 201, exp_res.text)
             self.assertEqual(exp_res.json()["category"], "Transport")
             self.assertEqual(exp_res.json()["amount"], 60.0)
+            self.assertEqual(exp_res.json()["wallet"], "bKash")
+
+            wallets_res = self.client.get(
+                "/api/shortcuts/wallets",
+                headers={"X-Shortcut-Token": raw_token},
+            )
+            self.assertEqual(wallets_res.status_code, 200, wallets_res.text)
+            self.assertEqual(wallets_res.json()["top_wallets"][0], "bKash")
 
             bad_res = self.client.post(
                 "/api/shortcuts/log",

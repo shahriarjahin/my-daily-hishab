@@ -43,7 +43,11 @@ async def account_context(request, call_next):
     if not request.url.path.startswith("/api/"):
         return await call_next(request)
     from starlette.concurrency import run_in_threadpool
-    shortcut_raw = shortcuts.extract_shortcut_token(request) if request.url.path == "/api/shortcuts/log" else None
+    shortcut_raw = (
+        shortcuts.extract_shortcut_token(request)
+        if request.url.path in ("/api/shortcuts/log", "/api/shortcuts/wallets")
+        else None
+    )
     if shortcut_raw:
         identity = await run_in_threadpool(shortcuts.authenticate_shortcut_token, shortcut_raw)
         if not identity:
