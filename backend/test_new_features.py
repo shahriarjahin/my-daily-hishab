@@ -242,6 +242,18 @@ class ShortcutTokenTests(unittest.TestCase):
         )
         self.assertEqual(revoked_res.status_code, 401)
 
+    def test_quick_popup_page_and_script_served(self) -> None:
+        with patch("backend.cloud.read_session", return_value=(None, None)):
+            page = self.client.get("/quick")
+            self.assertEqual(page.status_code, 200)
+            self.assertIn("text/html", page.headers.get("content-type", ""))
+            self.assertIn('/static/quick.js', page.text)
+
+            script = self.client.get("/static/quick.js")
+            self.assertEqual(script.status_code, 200)
+            self.assertIn("/api/shortcuts/wallets", script.text)
+            self.assertIn("/api/shortcuts/log", script.text)
+
 
 if __name__ == "__main__":
     unittest.main()

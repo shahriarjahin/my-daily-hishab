@@ -107,6 +107,13 @@ def icon_512():
 @app.get("/sw.js")
 def service_worker():
     return FileResponse(_HERE / "static" / "sw.js", media_type="application/javascript", headers={"Service-Worker-Allowed": "/", "Cache-Control": "no-cache"})
+
+
+@app.get("/quick", response_class=HTMLResponse)
+def quick_entry_popup():
+    return FileResponse(_HERE / "static" / "quick.html", media_type="text/html", headers={"Cache-Control": "no-cache"})
+
+
 @app.get("/", response_class=HTMLResponse)
 def dashboard(request: Request):
     if (react_directory / "index.html").is_file():

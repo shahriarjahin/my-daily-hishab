@@ -81,17 +81,34 @@ function ShortcutTokensSection() {
             {t("URL")}: {endpointUrl}
           </small>
           <small>
+            {t("Quick popup URL")}:{" "}
+            {`${typeof window !== "undefined" ? window.location.origin : ""}/quick#${createdToken}`}
+          </small>
+          <small>
             {t("Header")}: X-Shortcut-Token · {t("JSON Body")}: {"{\"text\": \"Ask Each Time\"}"}
           </small>
-          <Button
-            secondary
-            onClick={() => {
-              void navigator.clipboard?.writeText(createdToken);
-              notify("Copied");
-            }}
-          >
-            {t("Copy token")}
-          </Button>
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+            <Button
+              secondary
+              onClick={() => {
+                void navigator.clipboard?.writeText(createdToken);
+                notify("Copied");
+              }}
+            >
+              {t("Copy token")}
+            </Button>
+            <Button
+              secondary
+              onClick={() => {
+                void navigator.clipboard?.writeText(
+                  `${typeof window !== "undefined" ? window.location.origin : ""}/quick#${createdToken}`
+                );
+                notify("Copied");
+              }}
+            >
+              {t("Copy quick link")}
+            </Button>
+          </div>
         </div>
       )}
 

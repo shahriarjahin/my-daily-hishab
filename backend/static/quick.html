@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"
+    />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self';"
+    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <title>Hishab · Quick Entry</title>
+    <style>
+      :root {
+        --bg: #0b1116;
+        --card: #131c24;
+        --surface: #1b2732;
+        --border: rgba(255, 255, 255, 0.11);
+        --text: #eef3f7;
+        --muted: #8ea0b0;
+        --accent: #22c55e;
+        --accent-ink: #052e16;
+        --accent-soft: rgba(34, 197, 94, 0.16);
+        --danger: #f87171;
+        --danger-soft: rgba(248, 113, 113, 0.14);
+      }
+      @media (prefers-color-scheme: light) {
+        :root {
+          --bg: #f3f6f8;
+          --card: #ffffff;
+          --surface: #edf2f6;
+          --border: rgba(15, 23, 42, 0.12);
+          --text: #0f172a;
+          --muted: #5b6b7c;
+          --accent: #16a34a;
+          --accent-ink: #ffffff;
+          --accent-soft: rgba(22, 163, 74, 0.14);
+          --danger: #dc2626;
+          --danger-soft: rgba(220, 38, 38, 0.1);
+        }
+      }
+      * {
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI",
+          Roboto, sans-serif;
+        min-height: 100%;
+      }
+      .shell {
+        max-width: 480px;
+        margin: 0 auto;
+        padding: max(16px, env(safe-area-inset-top)) 16px
+          max(24px, env(safe-area-inset-bottom));
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 16px;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+      }
+      .dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: var(--accent);
+        flex-shrink: 0;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .row-between {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      .label {
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--muted);
+      }
+      .ghost-btn {
+        background: var(--surface);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 6px 11px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .ghost-btn:active {
+        opacity: 0.75;
+      }
+      textarea,
+      input[type="password"],
+      select {
+        width: 100%;
+        background: var(--surface);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 12px 14px;
+        font-family: inherit;
+        font-size: 16px;
+        line-height: 1.4;
+        outline: none;
+      }
+      textarea:focus,
+      input[type="password"]:focus,
+      select:focus {
+        border-color: var(--accent);
+      }
+      textarea {
+        resize: none;
+      }
+      .wallets {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+      }
+      .wallet-pill {
+        min-height: 46px;
+        padding: 8px 10px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--text);
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        transition: transform 0.08s ease, background-color 0.12s ease,
+          border-color 0.12s ease;
+      }
+      .wallet-pill:active {
+        transform: scale(0.97);
+      }
+      .wallet-pill.active {
+        background: var(--accent-soft);
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+      .wallet-empty {
+        grid-column: 1 / -1;
+        font-size: 13px;
+        color: var(--muted);
+        padding: 6px 0;
+      }
+      .primary-btn {
+        width: 100%;
+        min-height: 50px;
+        border: none;
+        border-radius: 14px;
+        background: var(--accent);
+        color: var(--accent-ink);
+        font-size: 16px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: opacity 0.12s ease, transform 0.08s ease;
+      }
+      .primary-btn:active {
+        transform: scale(0.985);
+      }
+      .primary-btn:disabled {
+        opacity: 0.55;
+        cursor: wait;
+      }
+      .status {
+        border-radius: 14px;
+        padding: 12px 14px;
+        font-size: 14px;
+        line-height: 1.45;
+        border: 1px solid var(--border);
+        background: var(--surface);
+      }
+      .status.ok {
+        background: var(--accent-soft);
+        border-color: var(--accent);
+      }
+      .status.err {
+        background: var(--danger-soft);
+        border-color: var(--danger);
+        color: var(--danger);
+      }
+      .hint {
+        margin: 0;
+        font-size: 13px;
+        line-height: 1.45;
+        color: var(--muted);
+      }
+      .footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 2px 4px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .link-btn {
+        background: none;
+        border: none;
+        padding: 4px 0;
+        color: var(--muted);
+        font-size: 13px;
+        text-decoration: underline;
+        cursor: pointer;
+      }
+      .footer a {
+        color: var(--muted);
+      }
+      [hidden] {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div class="brand">
+          <span class="dot" aria-hidden="true"></span>
+          <span>Hishab · Quick Entry</span>
+        </div>
+        <button id="toggleTokenBtn" class="ghost-btn" type="button" hidden>
+          Token
+        </button>
+      </header>
+
+      <section id="tokenSection" class="card" hidden>
+        <span class="label">Connect Shortcut Token</span>
+        <p class="hint">
+          Paste your <code>hishab_sc_...</code> token from Settings &rarr; Data
+          &rarr; iPhone Shortcuts, or open <code>/quick#YOUR_TOKEN</code>.
+        </p>
+        <input
+          id="tokenInput"
+          type="password"
+          autocomplete="off"
+          spellcheck="false"
+          placeholder="hishab_sc_..."
+        />
+        <button id="saveTokenBtn" class="primary-btn" type="button">
+          Connect
+        </button>
+      </section>
+
+      <form id="quickForm" class="card" hidden>
+        <div class="row-between">
+          <label class="label" for="textInput">Expense, Income, or SMS</label>
+          <button id="pasteBtn" class="ghost-btn" type="button">Paste SMS</button>
+        </div>
+        <textarea
+          id="textInput"
+          rows="2"
+          placeholder="50 tk lunch"
+          enterkeyhint="done"
+          autocomplete="off"
+        ></textarea>
+
+        <div class="row-between">
+          <span class="label">Wallet</span>
+          <span id="walletHint" class="hint">Top 3 most used</span>
+        </div>
+        <div id="walletPills" class="wallets" role="radiogroup" aria-label="Wallet">
+          <span class="wallet-empty">Loading wallets...</span>
+        </div>
+
+        <div id="extraWalletWrap" hidden>
+          <select id="extraWalletSelect" aria-label="More wallets">
+            <option value="">More wallets...</option>
+          </select>
+        </div>
+
+        <button id="saveBtn" class="primary-btn" type="submit">
+          Save Transaction
+        </button>
+      </form>
+
+      <div id="statusBox" class="status" role="status" aria-live="polite" hidden></div>
+
+      <footer class="footer">
+        <button id="changeTokenBtn" class="link-btn" type="button" hidden>
+          Change token
+        </button>
+        <a href="/">Open full app</a>
+      </footer>
+    </main>
+
+    <script src="/static/quick.js" defer></script>
+  </body>
+</html>
