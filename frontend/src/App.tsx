@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useStore } from "./context";
 import { api, native, device } from "./api";
 import { Icon } from "./components/Icon";
@@ -268,6 +268,7 @@ export default function App() {
       mutate,
     } = useStore(),
     [sheet, setSheet] = useState(false),
+    [launchPrefill, setLaunchPrefill] = useState<{ text?: string; sms?: boolean } | null>(null),
     [form, setForm] = useState<FormSpec | null>(null),
     [deletion, setDeletion] = useState<{ path: string; label: string } | null>(
       null,
@@ -276,6 +277,8 @@ export default function App() {
     [auto, setAuto] = useState(false),
     [cloudChoice, setCloudChoice] = useState(false),
     [tutorial, setTutorial] = useState(false);
+  const stateRef = useRef(s);
+  stateRef.current = s;
   useEffect(() => {
     const back = () => {
       if (document.querySelector(".quickstart-slide")) {
@@ -292,6 +295,38 @@ export default function App() {
     window.addEventListener("hishab-back", back);
     return () => window.removeEventListener("hishab-back", back);
   }, [deletion, auto, form, sheet, route]);
+  useEffect(() => {
+    if (!native || !s || !s.settings.name.trim() || cloud?.mfa_required) return;
+    const handleLaunch = () => {
+      const current = stateRef.current;
+      if (!current) return;
+      void device<{ action?: string; text?: string } | null>("consume-launch")
+        .then((intent) => {
+          if (!intent?.action) return;
+          if (intent.action === "transfer") {
+            setSheet(false);
+            setLaunchPrefill(null);
+            setForm(formFactory(current).transfer());
+          } else if (intent.action === "share" && intent.text) {
+            setForm(null);
+            setLaunchPrefill({ text: intent.text });
+            setSheet(true);
+          } else if (intent.action === "sms") {
+            setForm(null);
+            setLaunchPrefill({ sms: true });
+            setSheet(true);
+          } else if (intent.action === "add") {
+            setForm(null);
+            setLaunchPrefill(null);
+            setSheet(true);
+          }
+        })
+        .catch(() => {});
+    };
+    handleLaunch();
+    window.addEventListener("hishab-launch", handleLaunch);
+    return () => window.removeEventListener("hishab-launch", handleLaunch);
+  }, [Boolean(s), s?.settings.name, cloud?.mfa_required]);
   const remove = (path: string, label: string) => {
     setDeleteError("");
     setDeletion({ path, label });
@@ -564,13 +599,20 @@ export default function App() {
       {showTutorial && <QuickStart close={() => setTutorial(false)} />}
       {sheet && (
         <EntrySheet
-          close={() => setSheet(false)}
+          close={() => {
+            setSheet(false);
+            setLaunchPrefill(null);
+          }}
+          initialText={launchPrefill?.text}
+          initialSms={launchPrefill?.sms}
           transfer={() => {
             setSheet(false);
+            setLaunchPrefill(null);
             setForm(forms.transfer());
           }}
           smart={() => {
             setSheet(false);
+            setLaunchPrefill(null);
             navigate("parser");
           }}
         />

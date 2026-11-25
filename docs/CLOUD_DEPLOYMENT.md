@@ -1,79 +1,54 @@
-# Deploy Hishab to Vercel
+# Deploy Hishab to Vercel & Supabase
 
-The app is cloud-only. Local development and production both use Supabase Auth and account-owned
-cloud workspaces. No live ledger is stored on the server filesystem or in browser storage.
+Hishab runs as a FastAPI application backed by Supabase Auth and PostgreSQL. Local development and Vercel production both use account-owned cloud persistence; no ledger data is written to the web server filesystem.
 
-## Supabase
+## 1. Supabase Setup
 
-1. Run `supabase/migrations/001_hishab.sql` in the project's SQL Editor. This creates workspace
-   and encrypted-AI-config tables, owner-only policies and the revision-checked save function.
-2. Enable email/password login in Supabase Auth. If email confirmation is enabled, configure
-   the production Site URL and confirmation redirects under Auth URL Configuration.
-3. Use the project URL and anonymous/publishable API key. Do not supply a service-role key.
+1. Run all SQL migrations in order inside the Supabase SQL Editor:
+   - `supabase/migrations/001_hishab.sql` — base workspace/AI config tables, RLS ownership policies, and revision-checked saves
+   - `supabase/migrations/002_optional_mfa.sql` — optional authenticator MFA enforcement policies
+   - `supabase/migrations/003_relational_schema.sql` — relational ledger schema (`wallets`, `transactions`, `movements`, `budgets`, `goals`, `savings`, `loans`, `regulars`, `categories`) with RLS
+   - `supabase/migrations/004_bills_and_shortcuts.sql` — `recurring_bills` and `shortcut_tokens` tables with RLS
+2. Enable **Email/Password** (and optional Google/GitHub OAuth or Passkeys) in **Supabase → Authentication**. Configure your Site URL and redirect callbacks under **URL Configuration** (see [ACCOUNT_SETUP.md](ACCOUNT_SETUP.md)).
+3. Copy your project URL, public `anon`/publishable key, and pooled PostgreSQL `DATABASE_URL` (Transaction mode, port `6543`). Do **not** deploy a `service_role` key.
 
-## Vercel
+## 2. Vercel Deployment
 
-1. Import this repository with the FastAPI framework preset. Root `app.py` exports the ASGI app.
-   `vercel.json` supplies the function configuration. No frontend build command is needed.
-2. Set these **server environment variables** in Vercel:
+1. Import the repository using the **FastAPI** preset from the repository root (`app.py` exports `app`, `vercel.json` bundles `backend/static/**` and `supabase/migrations/**`).
+2. Leave build/output overrides empty — the compiled React bundle is committed under `backend/static/react/`.
+3. Configure environment variables in Vercel:
 
-   | Variable | Value |
+   | Variable | Purpose |
    | --- | --- |
-   | `SUPABASE_URL` | Your Supabase project HTTPS URL |
-   | `SUPABASE_ANON_KEY` | Your project's anonymous/public API key |
-   | `HISHAB_SECRET_KEY` | A Fernet key generated once and kept stable |
-   | `GOOGLE_API_KEY` | Optional host-provided Google AI key |
-   | `HISHAB_OWNER_EMAIL` | Account allowed to use host-provided provider keys; otherwise connect private keys in Settings |
-   | `GEMINI_MODEL` | Optional; defaults to `gemini-flash-latest` |
+   | `SUPABASE_URL` | Supabase project HTTPS URL |
+   | `SUPABASE_ANON_KEY` | Supabase public anon/publishable key |
+   | `DATABASE_URL` | Pooled Supabase PostgreSQL URI for fast relational mode |
+   | `HISHAB_SECRET_KEY` | Stable Fernet key for session cookies and encrypted provider keys |
+   | `HISHAB_PUBLIC_URL` | Production origin (`https://your-app.vercel.app`) for auth callbacks |
+   | `GOOGLE_API_KEY` | Optional host-provided Gemini key |
+   | `HISHAB_OWNER_EMAIL` | Account permitted to use host-provided keys |
+   | `GEMINI_MODEL` | Optional model override (default: `gemini-flash-latest`) |
+   | `HISHAB_ENCRYPT_WORKSPACES` | Optional `true`/`false` switch for encrypted cloud snapshot fallback |
 
-   Generate the secret with:
+   Generate a Fernet secret once:
 
    ```powershell
    python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
    ```
 
-   For an existing installation, copy the same `HISHAB_SECRET_KEY` from your ignored `.env` into Vercel.
-   Changing it invalidates browser sessions and prevents decryption of saved provider keys.
+   Keep `HISHAB_SECRET_KEY` constant across deployments; rotating it invalidates existing sessions and encrypted API keys.
 
-3. Deploy and set the resulting HTTPS domain as your Supabase Site URL.
-4. Sign in, check `/api/health`, add a small entry, reload, and check the same account on a second device.
-5. For the old app's data, use Settings → Import previous Hishab records with `hishab-migration.json`.
-   Import is restricted to an empty account, so existing cloud transactions cannot be replaced accidentally.
+4. Deploy, verify `/api/health`, sign in, test `/quick` Shortcut entry, and confirm state persists across reload.
 
-`.vercelignore` excludes credentials, database backups, migration data, APKs, experiments and ML datasets.
-Only runtime app code, assets and schema SQL are required by the web deployment.
+## 3. Standalone Shortcut Popup (`/quick`) & Service Worker
 
-## Automatic AI failover
+- `GET /quick` serves `backend/static/quick.html` + `/static/quick.js` with strict `script-src 'self'` CSP for Apple Shortcuts **Show Web View** or mobile browser shortcuts.
+- The asset-only service worker (`/sw.js`) caches static bundle assets only — never API responses, Shortcut endpoints, CSV/PDF exports, or authentication cookies.
 
-In Settings, connect any providers you have credits for. Lower priority numbers are tried first.
-The app reacts to request failures; it does not claim to know every provider's remaining credit balance.
-It tries each enabled, connected provider at most once per extraction. Credit failures cool down longer;
-rate, network and invalid-output failures temporarily cool down. Cooldown state is an instance-local
-optimization; cold starts may retry a provider, but requests still advance automatically on failure.
-
-The text can be sent to more than one connected provider during failover. Extraction never writes
-transactions or wallets. Wallet updates always require explicit review, even when transaction quick-save
-is enabled. Non-Google adapters are verified with protocol fixtures and require the corresponding API
-keys to test live. Model identifiers remain editable because availability depends on provider accounts.
-
-## Mobile use
-
-The manifest, touch icon and asset-only service worker support home-screen installation. In Safari,
-use Share → Add to Home Screen. Android browsers may offer Install app. Network access is required
-for login, financial records and AI. The service worker never caches account/API responses or exports.
-The Android APK now includes encrypted SQLite and offline bookkeeping, with Supabase sync when connected. See `mobile/README.md` for Android installation and signed release builds. The web/PWA remains cloud-only.
-
-## Architecture limits
-
-The versioned workspace is a single JSON document per account. This fits a personal ledger and keeps
-wallet, budget and transaction changes atomic. Each save replaces the account document with conflict
-checking. If the app grows to very large ledgers or shared household accounts, move the same API to
-normalized Supabase tables, paginated queries and server-side aggregates before adding those features.
-
-## Primary references
+## 4. Primary References
 
 - [Vercel FastAPI deployment](https://vercel.com/docs/frameworks/backend/fastapi)
-- [Supabase row-level security](https://supabase.com/docs/guides/database/postgres/row-level-security)
+- [Supabase Row-Level Security](https://supabase.com/docs/guides/database/postgres/row-level-security)
 - [Supabase Auth](https://supabase.com/docs/guides/auth)
 - [OpenAI structured outputs](https://developers.openai.com/api/docs/guides/structured-outputs)
 - [Cohere Chat v2](https://docs.cohere.com/v2/reference/chat)

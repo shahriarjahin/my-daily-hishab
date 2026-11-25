@@ -20,6 +20,8 @@ public final class HishabPlugin extends Plugin {
             }catch(Throwable e){call.reject("Offline AI is unavailable on this device.");}return;
         }
         if(op.equals("passkey")){Passkeys.begin(this,call,body.optBoolean("registration"));return;}
+        if(op.equals("consume-launch")){JSONObject pending=MainActivity.consumePendingLaunch();call.resolve(new JSObject().put("data",pending==null?JSONObject.NULL:pending));return;}
+        if(op.equals("widget")){try{Runtime runtime=Runtime.get(getContext());runtime.disk.execute(()->{WidgetStore.save(getContext(),body);call.resolve(new JSObject().put("data",true));});}catch(Exception e){call.resolve(new JSObject().put("data",false));}return;}
         if(op.equals("exit")){getActivity().runOnUiThread(()->{getActivity().moveTaskToBack(true);call.resolve(new JSObject().put("data",true));});return;}
         if(op.equals("updates")){getActivity().runOnUiThread(()->{try{MainActivity activity=(MainActivity)getActivity();if(body.has("automatic"))activity.updater.setAutomatic(body.getBoolean("automatic"));if(body.optBoolean("check"))activity.updater.check(true);call.resolve(new JSObject().put("data",new JSONObject().put("automatic",activity.updater.automatic()).put("version",getContext().getPackageManager().getPackageInfo(getContext().getPackageName(),0).versionName)));}catch(Exception e){call.reject("Could not check app updates.");}});return;}
         if(op.equals("statement")){

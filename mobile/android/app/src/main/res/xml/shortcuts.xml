@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="quick_add"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_add"
+        android:shortcutShortLabel="@string/shortcut_add_short"
+        android:shortcutLongLabel="@string/shortcut_add_long">
+        <intent
+            android:action="com.digitxbd.hishab.ACTION_QUICK_ADD"
+            android:targetPackage="com.digitxbd.hishab"
+            android:targetClass="com.digitxbd.hishab.MainActivity">
+            <extra
+                android:name="hishab_action"
+                android:value="add" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="paste_sms"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_sms"
+        android:shortcutShortLabel="@string/shortcut_sms_short"
+        android:shortcutLongLabel="@string/shortcut_sms_long">
+        <intent
+            android:action="com.digitxbd.hishab.ACTION_PASTE_SMS"
+            android:targetPackage="com.digitxbd.hishab"
+            android:targetClass="com.digitxbd.hishab.MainActivity">
+            <extra
+                android:name="hishab_action"
+                android:value="sms" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="transfer"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_transfer"
+        android:shortcutShortLabel="@string/shortcut_transfer_short"
+        android:shortcutLongLabel="@string/shortcut_transfer_long">
+        <intent
+            android:action="com.digitxbd.hishab.ACTION_TRANSFER"
+            android:targetPackage="com.digitxbd.hishab"
+            android:targetClass="com.digitxbd.hishab.MainActivity">
+            <extra
+                android:name="hishab_action"
+                android:value="transfer" />
+        </intent>
+    </shortcut>
+</shortcuts>

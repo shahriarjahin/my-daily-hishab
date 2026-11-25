@@ -1,1 +1,21 @@
-<resources><string name="asset_statements" translatable="false">[{&quot;include&quot;:&quot;https://mydailyhishab.vercel.app/.well-known/assetlinks.json&quot;}]</string></resources>
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_brand">hishab.</string>
+    <string name="asset_statements" translatable="false">[{&quot;include&quot;:&quot;https://mydailyhishab.vercel.app/.well-known/assetlinks.json&quot;}]</string>
+    <string name="shortcut_add_short">Quick Add</string>
+    <string name="shortcut_add_long">Quick Add Entry</string>
+    <string name="shortcut_sms_short">Paste SMS</string>
+    <string name="shortcut_sms_long">Parse Bank / bKash SMS</string>
+    <string name="shortcut_transfer_short">Transfer</string>
+    <string name="shortcut_transfer_long">Wallet Transfer</string>
+    <string name="tile_quick_add">Quick Hishab</string>
+    <string name="tile_subtitle">Add entry</string>
+    <string name="share_log_label">Log in Hishab</string>
+    <string name="widget_summary_name">Hishab Balance &amp; Quick Add</string>
+    <string name="widget_bar_name">Hishab Quick Bar</string>
+    <string name="widget_total_balance">Total balance</string>
+    <string name="widget_today">Today</string>
+    <string name="widget_quick_add">+ Quick Add</string>
+    <string name="widget_sms_pill">SMS</string>
+    <string name="widget_open_prompt">Open Hishab</string>
+</resources>

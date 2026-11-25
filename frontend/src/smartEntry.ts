@@ -185,3 +185,46 @@ export function applyOptimisticTransactions(
     },
   };
 }
+
+export interface WidgetSummaryPayload {
+  signed_in: boolean;
+  total_balance: string;
+  today_spent: string;
+  month_spent: string;
+  budget: string;
+  top_wallet: string;
+  label_total: string;
+  label_today: string;
+  label_add: string;
+  label_sms: string;
+  label_transfer: string;
+}
+
+/** Builds a localized summary snapshot synced to native Android Home Screen widgets. */
+export function buildWidgetSummary(
+  state: WorkspaceState,
+  moneyFn: (n: number) => string,
+  tFn: (s: string) => string,
+): WidgetSummaryPayload {
+  const totalBalance = state.wallets.reduce((sum, w) => sum + (Number(w.balance) || 0), 0);
+  const counts = new Map<number, number>();
+  for (const tx of state.transactions) {
+    counts.set(tx.wallet_id, (counts.get(tx.wallet_id) || 0) + 1);
+  }
+  const top = [...state.wallets].sort(
+    (a, b) => (counts.get(b.id) || 0) - (counts.get(a.id) || 0) || a.id - b.id,
+  )[0];
+  return {
+    signed_in: true,
+    total_balance: moneyFn(Math.round(totalBalance * 100) / 100),
+    today_spent: moneyFn(state.planning.today_spent || 0),
+    month_spent: moneyFn(state.planning.spent || 0),
+    budget: state.planning.budget > 0 ? moneyFn(state.planning.budget) : "",
+    top_wallet: top ? `${top.name} · ${moneyFn(top.balance)}` : "",
+    label_total: tFn("Total balance"),
+    label_today: tFn("Today"),
+    label_add: `+ ${tFn("Quick add")}`,
+    label_sms: tFn("Paste SMS"),
+    label_transfer: tFn("Transfer"),
+  };
+}

@@ -4,6 +4,7 @@ import {
   deriveQuickTemplates,
   togglePinnedTemplate,
   applyOptimisticTransactions,
+  buildWidgetSummary,
   enqueueOfflineItem,
   loadOfflineQueue,
   saveOfflineQueue,
@@ -149,5 +150,18 @@ describe("BD SMS and Smart Entry helpers", () => {
     expect(loadOfflineQueue()).toHaveLength(1);
     saveOfflineQueue([]);
     expect(loadOfflineQueue()).toHaveLength(0);
+
+    const widget = buildWidgetSummary(
+      next,
+      (n) => `৳${n}`,
+      (k) => k,
+    );
+    expect(widget).toMatchObject({
+      signed_in: true,
+      total_balance: "৳25975",
+      today_spent: `৳${next.planning.today_spent}`,
+      month_spent: "৳525",
+      top_wallet: "Cash · ৳975",
+    });
   });
 });

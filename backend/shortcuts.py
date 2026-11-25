@@ -1,4 +1,4 @@
-"""iOS Shortcuts / automation API tokens and quick one-step logging webhook."""
+"""Shortcuts / automation API tokens and quick one-step logging webhook."""
 import hashlib
 import secrets
 from datetime import datetime
@@ -54,7 +54,7 @@ def authenticate_shortcut_token(raw_token: str) -> dict | None:
 
 
 class ShortcutTokenCreate(Input):
-    label: str = Field(default="iPhone Shortcut", min_length=1, max_length=60)
+    label: str = Field(default="Shortcut", min_length=1, max_length=60)
     default_wallet_id: int | None = Field(default=None, gt=0, strict=True)
 
     @field_validator("label")

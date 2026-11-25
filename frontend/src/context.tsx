@@ -12,6 +12,7 @@ import { translate, type TranslationValues } from "./i18n";
 import { SystemBars, SystemBarsStyle } from "@capacitor/core";
 import {
   applyOptimisticTransactions,
+  buildWidgetSummary,
   enqueueOfflineItem,
   loadOfflineQueue,
   saveOfflineQueue,
@@ -313,6 +314,26 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     media.addEventListener("change", apply);
     return () => media.removeEventListener("change", apply);
   }, [state?.settings.theme, language]);
+  const formatMoney = (n: number) =>
+    new Intl.NumberFormat(language === "bn" ? "bn-BD" : "en-IN", {
+      style: "currency",
+      currency: state?.settings.currency || "BDT",
+      currencyDisplay: "narrowSymbol",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    }).format(n);
+  const translateText = (text: string, values?: TranslationValues) =>
+    translate(text, language, values);
+
+  useEffect(() => {
+    if (!native) return;
+    if (!cloud?.signed_in || cloud.mfa_required || !state) {
+      void device("widget", { signed_in: false }).catch(() => {});
+      return;
+    }
+    void device("widget", buildWidgetSummary(state, formatMoney, translateText)).catch(() => {});
+  }, [state, cloud?.signed_in, cloud?.mfa_required, language]);
+
   return (
     <Store.Provider
       value={{
@@ -338,15 +359,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           window.scrollTo(0, 0);
         },
         notify,
-        t: (text, values) => translate(text, language, values),
-        money: (n) =>
-          new Intl.NumberFormat(language === "bn" ? "bn-BD" : "en-IN", {
-            style: "currency",
-            currency: state?.settings.currency || "BDT",
-            currencyDisplay: "narrowSymbol",
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 2,
-          }).format(n),
+        t: translateText,
+        money: formatMoney,
       }}
     >
       {children}

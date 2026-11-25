@@ -184,7 +184,7 @@ final class Runtime {
             case "signup":return login(body,true);
             case "forgot-password":{String base=preferences.getString("backend_url",config.optString("backend_url","https://mydailyhishab.vercel.app"));context.startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse(base+"/?forgot=1")).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK));return new JSONObject().put("opened",true);}
             case "password":http(config.getString("supabase_url"),"/auth/v1/user","PUT",body,token());return new JSONObject().put("saved",true);
-            case "logout":if(offline()){preferences.edit().putBoolean("offline_mode",false).commit();return new JSONObject().put("signed_in",false);}session(null);syncState="offline";return new JSONObject().put("signed_in",false);
+            case "logout":if(offline()){preferences.edit().putBoolean("offline_mode",false).commit();WidgetStore.clear(context);return new JSONObject().put("signed_in",false);}session(null);syncState="offline";WidgetStore.clear(context);return new JSONObject().put("signed_in",false);
             case "sync":sync();return status();
             case "resolve":store.resolve(user(),body.getString("choice"));sync();return status();
             case "recoveries":return store.recoveries(user());

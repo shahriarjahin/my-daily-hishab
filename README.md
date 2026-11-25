@@ -1,15 +1,13 @@
 <div align="center">
 
-<img src="backend/static/hishab-icon-v2-192.png" width="96" alt="Hishab logo" />
+<img src="backend/static/hishab-icon-v2-192.png" width="88" alt="Hishab logo" />
 
 # Hishab
 
-**Your everyday money companion.**
-
-Wallets, budgets and smarter bookkeeping — in English, বাংলা and Banglish.
+**Personal finance, wallets, budgets, and instant mobile bookkeeping — in English, বাংলা, and Banglish.**
 
 [![Download APK](https://img.shields.io/badge/Download_Android_APK-DCA73E?style=for-the-badge&logo=android&logoColor=191815)](https://github.com/shahriarjahin/my-daily-hishab/releases/latest)
-[![Documentation](https://img.shields.io/badge/Read_the_docs-191815?style=for-the-badge&logo=readthedocs&logoColor=white)](docs/FINANCE_FEATURES.md)
+[![Documentation](https://img.shields.io/badge/Feature_Docs-191815?style=for-the-badge&logo=readthedocs&logoColor=white)](docs/FINANCE_FEATURES.md)
 
 [![Latest release](https://img.shields.io/github/v/release/shahriarjahin/my-daily-hishab?color=dca73e&label=release)](https://github.com/shahriarjahin/my-daily-hishab/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/shahriarjahin/my-daily-hishab/total?color=10b981)](https://github.com/shahriarjahin/my-daily-hishab/releases)
@@ -17,25 +15,27 @@ Wallets, budgets and smarter bookkeeping — in English, বাংলা and Ban
 [![Issues](https://img.shields.io/github/issues/shahriarjahin/my-daily-hishab)](https://github.com/shahriarjahin/my-daily-hishab/issues)
 [![Last commit](https://img.shields.io/github/last-commit/shahriarjahin/my-daily-hishab)](https://github.com/shahriarjahin/my-daily-hishab/commits/main)
 
-React · TypeScript · Capacitor · FastAPI · Supabase
+React 19 · TypeScript · Capacitor 8 · FastAPI · PostgreSQL / SQLModel · Supabase
 
 </div>
 
 ---
 
-## See Hishab in action
+## Overview
 
-Screenshots captured on iPhone by the developer, using the demo account. Select any image to view it at full resolution.
+Hishab is a cloud-synced and offline-capable personal finance platform tailored for everyday cash, mobile financial services (bKash, Nagad, Rocket), and bank accounts. It pairs a React web app hosted on FastAPI/Vercel with a native Android build backed by Android Keystore-encrypted SQLite, on-device AI inference, home screen widgets, quick tiles, and share-sheet SMS parsing.
+
+## Screenshots
+
+Screenshots captured on device using the demo workspace. Select any screen for full resolution.
 
 <table>
   <tr>
-    <td align="center"><strong>Home & cash flow</strong><br /><br /><a href="screenshots/home.PNG"><img src="screenshots/home.PNG" width="240" alt="Hishab — Home & cash flow" /></a></td>
-    <td align="center"><strong>Activity & filters</strong><br /><br /><a href="screenshots/activity.PNG"><img src="screenshots/activity.PNG" width="240" alt="Hishab — Activity & filters" /></a></td>
+    <td align="center"><strong>Home &amp; cash flow</strong><br /><br /><a href="screenshots/home.PNG"><img src="screenshots/home.PNG" width="240" alt="Hishab — Home & cash flow" /></a></td>
+    <td align="center"><strong>Activity &amp; filters</strong><br /><br /><a href="screenshots/activity.PNG"><img src="screenshots/activity.PNG" width="240" alt="Hishab — Activity & filters" /></a></td>
     <td align="center"><strong>Spending insights</strong><br /><br /><a href="screenshots/insights.PNG"><img src="screenshots/insights.PNG" width="240" alt="Hishab — Spending insights" /></a></td>
   </tr>
 </table>
-
-### Your preferred look, your language
 
 <table>
   <tr>
@@ -45,13 +45,13 @@ Screenshots captured on iPhone by the developer, using the demo account. Select 
 </table>
 
 <details>
-<summary><strong>Explore wallets, goals, budgeting and more</strong></summary>
+<summary><strong>More screens (wallets, budgets, goals, entry, transfers, loans, settings &amp; auth)</strong></summary>
 
 <table>
   <tr>
     <td align="center"><strong>Wallets</strong><br /><br /><a href="screenshots/wallets.PNG"><img src="screenshots/wallets.PNG" width="240" alt="Hishab — Wallets" /></a></td>
     <td align="center"><strong>Budgets</strong><br /><br /><a href="screenshots/budgets.PNG"><img src="screenshots/budgets.PNG" width="240" alt="Hishab — Budgets" /></a></td>
-    <td align="center"><strong>Goals & savings</strong><br /><br /><a href="screenshots/goals.PNG"><img src="screenshots/goals.PNG" width="240" alt="Hishab — Goals & savings" /></a></td>
+    <td align="center"><strong>Goals &amp; savings</strong><br /><br /><a href="screenshots/goals.PNG"><img src="screenshots/goals.PNG" width="240" alt="Hishab — Goals & savings" /></a></td>
   </tr>
 </table>
 
@@ -59,7 +59,7 @@ Screenshots captured on iPhone by the developer, using the demo account. Select 
   <tr>
     <td align="center"><strong>Quick entry</strong><br /><br /><a href="screenshots/add_entry.PNG"><img src="screenshots/add_entry.PNG" width="240" alt="Hishab — Quick entry" /></a></td>
     <td align="center"><strong>Wallet transfers</strong><br /><br /><a href="screenshots/wallet_transfer.PNG"><img src="screenshots/wallet_transfer.PNG" width="240" alt="Hishab — Wallet transfers" /></a></td>
-    <td align="center"><strong>Loans & repayments</strong><br /><br /><a href="screenshots/loans.PNG"><img src="screenshots/loans.PNG" width="240" alt="Hishab — Loans & repayments" /></a></td>
+    <td align="center"><strong>Loans &amp; repayments</strong><br /><br /><a href="screenshots/loans.PNG"><img src="screenshots/loans.PNG" width="240" alt="Hishab — Loans & repayments" /></a></td>
   </tr>
 </table>
 
@@ -67,60 +67,81 @@ Screenshots captured on iPhone by the developer, using the demo account. Select 
   <tr>
     <td align="center"><strong>Categories</strong><br /><br /><a href="screenshots/categories.PNG"><img src="screenshots/categories.PNG" width="240" alt="Hishab — Categories" /></a></td>
     <td align="center"><strong>Settings</strong><br /><br /><a href="screenshots/settings.PNG"><img src="screenshots/settings.PNG" width="240" alt="Hishab — Settings" /></a></td>
-    <td align="center"><strong>Import & export</strong><br /><br /><a href="screenshots/data_export_import.PNG"><img src="screenshots/data_export_import.PNG" width="240" alt="Hishab — Import & export" /></a></td>
+    <td align="center"><strong>Import &amp; export</strong><br /><br /><a href="screenshots/data_export_import.PNG"><img src="screenshots/data_export_import.PNG" width="240" alt="Hishab — Import & export" /></a></td>
   </tr>
 </table>
 
 <table>
   <tr>
-    <td align="center"><strong>Sign in & passkeys</strong><br /><br /><a href="screenshots/sign_in.PNG"><img src="screenshots/sign_in.PNG" width="260" alt="Hishab — Sign in & passkeys" /></a></td>
+    <td align="center"><strong>Sign in &amp; passkeys</strong><br /><br /><a href="screenshots/sign_in.PNG"><img src="screenshots/sign_in.PNG" width="260" alt="Hishab — Sign in & passkeys" /></a></td>
     <td align="center"><strong>Create an account</strong><br /><br /><a href="screenshots/sign_up.PNG"><img src="screenshots/sign_up.PNG" width="260" alt="Hishab — Create an account" /></a></td>
   </tr>
 </table>
 
 </details>
 
-[Browse all 16 screenshots](screenshots/README.md) · [Showcase gallery source](docs/demo/showcase.html)
+[Browse all 16 screenshots](screenshots/README.md) · [Interactive gallery](docs/demo/showcase.html)
 
-## Everything in one place
+---
 
-| Manage | Plan | Understand |
-| --- | --- | --- |
-| Multiple wallets, transfers & Cash Out fees | Monthly budgets and category limits | Spending charts and cash flow |
-| Income, expenses, split bills & receipts | Recurring bills and savings goals | Month-over-Month (MoM) insights & search |
-| Quick templates, BD SMS parsing & loans | Regular daily spending trackers | CSV/PDF exports & AI advisor failover |
+## Features
 
-- **Fast daily logging:** quick templates, last-wallet memory, smart category suggestions, voice input, optimistic offline queuing, split-bill calculation, and instant Bangladesh MFS/bank SMS parsing (bKash, Nagad, Rocket & bank alerts including Cash Out fee handling).
-- **Recurring bills & MoM insights:** track monthly recurring bills by due day with one-tap payment from any wallet, and compare Month-over-Month category spending with daily pace projections.
-- **iPhone Back Tap & Shortcuts (`/quick`):** generate personal `hishab_sc_...` tokens in **Settings → Data** with one-tap prompt copying. Trigger Back Tap to open the lightweight `/quick` **Show Web View** popup with your live **Top-3 most-used wallets**, or automate directly via `GET /api/shortcuts/wallets` and `POST /api/shortcuts/log`.
-- **PDF statements:** downloadable PDFs for the past 1, 3, 6 or 12 months, or custom dates, with wallet selection and running balances. Android generates them on-device, including offline.
-- **Loan corrections:** edit initial principal, party, due date and notes. Borrowed repayments count as expenses without a second wallet debit.
-- **Made for daily use:** BDT and popular currencies, Bangla/English, light, dark and glass themes.
-- **One account:** Supabase login and account-owned data across web and Android.
-- **Android choice:** use encrypted local storage without an account, or sign in for cloud sync. Offline and cloud workspaces stay separate.
-- **Optional AI:** Android can extract BDT income and expenses on-device after a separate model download. Cloud providers remain available for other AI features. Every offline proposal is reviewed before saving.
-- **A guided start:** welcome-name setup, a skippable quick-start tutorial, and optional authenticator MFA and passkeys.
-- **A calmer start:** branded loading screen, reduced-motion support and placeholders during longer waits.
+### Fast Capture & Smart Input
+- **Quick templates & wallet memory:** Auto-derived frequent expense/income chips with pinned favorites; remembers your last-used wallet automatically.
+- **Bangladesh MFS & bank SMS parser:** Paste or share **bKash, Nagad, Rocket & bank SMS** — automatically detects amounts, descriptions, categories, wallet matches, and splits **Cash Out / transfer fees** cleanly from wallet movements.
+- **Voice input & category inference:** Web Speech capture in **English (`en-US`)** and **বাংলা (`bn-BD`)**, Bangla numeral normalization, and live keyword-based category suggestion.
+- **Split bills:** Split any expense across multiple friends (`my_share` + per-person loans/receivables recorded atomically).
+- **Optimistic saves & offline queue:** Zero-wait optimistic updates on web with automatic background replay on reconnect; durable offline SQLite storage on Android.
 
-## Get the Android app
+### Accounting, Planning & Reporting
+- **Multi-wallet ledger:** Manage Cash, MFS, card, and bank accounts with real-time balances, opening balance tracking, custom categories (with icons/colors), and brand logo detection.
+- **Transfers, loans & historical debt:** Wallet-to-wallet transfers (with optional fees), borrowed/lent loan ledgers, partial repayments, and pre-existing debt records (`affect_wallet=false`) that keep cash balances accurate.
+- **Budgets & savings goals:** Monthly `50/30/20` (Needs / Wants / Savings) targets, per-category spending limits, Asia/Dhaka daily allowance tracking, wallet savings reservations, and target goal tracking.
+- **Recurring bills & daily trackers:** Scheduled weekly/monthly/yearly bills with due-date badges and one-tap **Pay**, plus regular daily spending and quantity-unit trackers (`Regulars`).
+- **Insights & MoM comparisons:** 12-month cash-flow charts, Month-over-Month category deltas, top expenses, and end-of-month spending pace projections.
+- **PDF statements & CSV exports:** Branded multi-page PDF statements (`1`, `3`, `6`, `12` months or custom dates) with wallet filters and running balances — rendered server-side on web and offline on-device on Android — plus filtered CSV and JSON workspace exports.
 
-**[↓ Download the latest signed APK](https://github.com/shahriarjahin/my-daily-hishab/releases/latest)**
+### Shortcuts, Android Widgets & Automation
+- **Shortcut & Quick Webhook (`/quick`):** Generate scoped `hishab_sc_...` tokens under **Settings → Data** with one-tap **Copy quick link**, **Copy popup prompt**, and **Copy API prompt** helpers. Opens a standalone mobile entry sheet (`/quick`) with auto-updated **Top-3 most-used wallets** for iOS Back Tap / Apple Shortcuts (`Show Web View`), Tasker, or MacroDroid — or call `GET /api/shortcuts/wallets` and `POST /api/shortcuts/log` directly.
+- **Android Home Screen Widgets:**
+  - **Hishab Balance & Quick Add (`4×2` resizable):** Total balance, today's spend, top wallet badge, plus 1-tap **+ Quick Add**, **Paste SMS**, and **Transfer**.
+  - **Hishab Quick Bar (`4×1`):** Compact home-screen strip showing today's spend alongside **+ Quick Add** and **SMS** buttons.
+- **Android Launcher Shortcuts:** Long-press the app icon for **Quick Add**, **Paste SMS**, or **Transfer** (or pin directly to the home screen / bind Pixel Quick Tap or Samsung Side Key).
+- **Android Quick Settings Tile:** Swipe down your status bar shade and tap **Quick Hishab** over any app to open Quick Entry.
+- **Android Share Sheet (`Share → Log in Hishab`):** Highlight/share any bank or bKash/Nagad SMS text into Hishab to parse and review immediately.
 
-Requires **Android 8.0+**. Open the latest release and select the `.apk` asset. A SHA-256 checksum is included. To update, install over the existing app; do not uninstall first. Android asks for installation confirmation. You can also check for updates in the app's settings.
+### AI, Security & Localization
+- **Multi-provider Cloud AI:** Natural-language parsing, receipt photo OCR (JPEG/PNG/WebP up to 2 MB), AI budget auto-plan, and context-aware financial advisor chat with automatic failover across **Gemini, OpenAI, Anthropic, Cohere, Mistral, DeepSeek, and OpenRouter**.
+- **On-device Android Offline AI:** Optional ~630 MB GGUF `Qwen 3.5 0.8B` (`llama.cpp`) model extracts BDT transactions completely offline on 64-bit devices, always reviewed before saving.
+- **Languages, themes & UI:** Full **English** and **বাংলা** localization (`i18n`-verified), Light, Dark, and Liquid Glass themes, BDT and 15+ currencies, reduced-motion support, and interactive onboarding.
+- **Security & isolation:** Supabase Auth (email/password, Google/GitHub OAuth, **Passkeys / WebAuthn**, **Authenticator TOTP MFA**), AES-GCM Android Keystore storage, explicit conflict resolution with encrypted recovery copies, and optimistic compare-and-swap cloud revisions.
 
-Cloud sync and cloud AI need an internet connection. For offline text entry, open **Settings → General & Appearance → Offline AI**, download the approximately **630 MB** model, then enable it. Requires a 64-bit device with at least 3 GB RAM and roughly 900 MB free storage. See the [offline AI guide](docs/OFFLINE_AI.md) for scope and limitations. An iOS native build is not available yet — on iPhone, use the mobile web app and bind Back Tap with the `/quick` Apple Shortcut integration.
+---
 
-## Run locally
+## Android App
 
-Requires **Python 3.12** and a recent **Node.js 22 LTS** installation.
+Download the signed APK (`com.digitxbd.hishab`, **Android 8.0+ / API 26+**):
 
-1. Copy `.env.example` to `.env` and enter your `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `DATABASE_URL` (for relational mode) and a stable `HISHAB_SECRET_KEY`.
-2. Run the database migrations in order in your Supabase SQL Editor:
-   - [001_hishab.sql](supabase/migrations/001_hishab.sql) (base workspace tables & policies)
-   - [002_optional_mfa.sql](supabase/migrations/002_optional_mfa.sql) (optional MFA policies)
-   - [003_relational_schema.sql](supabase/migrations/003_relational_schema.sql) (relational tables & RLS)
-   - [004_bills_and_shortcuts.sql](supabase/migrations/004_bills_and_shortcuts.sql) (recurring bills & iPhone shortcut tokens)
-3. Install dependencies, build the interface and start the server:
+**[↓ Latest GitHub Release APK & Checksum](https://github.com/shahriarjahin/my-daily-hishab/releases/latest)**
+
+- **Updates:** Install newer `.apk` releases directly over existing builds (preserving encrypted local records), or check **Settings → Data & app → App updates** in-app for verified GitHub updates.
+- **Workspace modes:** Use device-only encrypted offline mode with no account, or sign in to sync with Supabase.
+- **Offline AI setup:** Open **Settings → General & Appearance → Offline AI** to download and verify the optional on-device extraction model (requires 64-bit device, 3+ GB RAM, ~900 MB free space).
+- **iOS usage:** No native App Store binary is shipped yet; install on Home Screen from Safari and pair Back Tap / Action Button with `/quick`.
+
+---
+
+## Quick Start (Local Development)
+
+Requires **Python 3.12** and **Node.js 22 LTS**.
+
+1. **Configure environment:** Copy `.env.example` to `.env` and populate `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `DATABASE_URL` (Supabase Transaction Pooler URI), and a persistent `HISHAB_SECRET_KEY`.
+2. **Apply database migrations** in order inside your Supabase SQL Editor:
+   1. [001_hishab.sql](supabase/migrations/001_hishab.sql)
+   2. [002_optional_mfa.sql](supabase/migrations/002_optional_mfa.sql)
+   3. [003_relational_schema.sql](supabase/migrations/003_relational_schema.sql)
+   4. [004_bills_and_shortcuts.sql](supabase/migrations/004_bills_and_shortcuts.sql)
+3. **Install, build & run:**
 
 ```powershell
 python -m venv .venv
@@ -130,25 +151,22 @@ npm ci --prefix frontend
 .\.venv\Scripts\python.exe -m uvicorn backend.main:app --host 127.0.0.1 --port 8001
 ```
 
-Open **http://127.0.0.1:8001/**. Web records remain in your Supabase account during local development.
+Open **http://127.0.0.1:8001/** (or **http://127.0.0.1:8001/quick** for the standalone Shortcut sheet).
 
 <details>
 <summary><strong>Deploy to Vercel</strong></summary>
 
-1. Import this repository as a FastAPI project, using the repository root.
-2. Keep build/output settings at their defaults; the production React bundle is committed.
-3. Set `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `DATABASE_URL` and the existing stable `HISHAB_SECRET_KEY` in Vercel.
-4. Optionally set `GOOGLE_API_KEY` and `HISHAB_OWNER_EMAIL`, or connect private AI keys in Settings.
-5. Deploy and add your production domain to Supabase Auth URL configuration.
+1. Import the repository as a **FastAPI** project (`app.py` / `vercel.json` include `backend/static/**` and `supabase/migrations/**`).
+2. Keep build/output overrides empty; prebuilt assets are committed under `backend/static/react/`.
+3. Set `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `DATABASE_URL`, `HISHAB_SECRET_KEY`, and `HISHAB_PUBLIC_URL` in Vercel (plus optional `GOOGLE_API_KEY` / `HISHAB_OWNER_EMAIL`).
+4. Add your production URL and `/auth/callback` to Supabase Auth URL Configuration.
 
-Never publish `.env`, signing keys or financial exports. Keep the encryption secret unchanged when moving an existing account.
-
-[Full deployment guide](docs/CLOUD_DEPLOYMENT.md) · [Sign-in, password recovery and cloud encryption setup](docs/ACCOUNT_SETUP.md)
+Never publish `.env`, signing keys, or financial backups, and keep `HISHAB_SECRET_KEY` constant across deployments. See [CLOUD_DEPLOYMENT.md](docs/CLOUD_DEPLOYMENT.md) and [ACCOUNT_SETUP.md](docs/ACCOUNT_SETUP.md).
 
 </details>
 
 <details>
-<summary><strong>Development and verification</strong></summary>
+<summary><strong>Testing & Verification</strong></summary>
 
 ```powershell
 .\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
@@ -160,26 +178,35 @@ npm run test:browser --prefix frontend
 npm run test:passkeys --prefix frontend
 ```
 
-Browser checks require Google Chrome. Tests use synthetic records and mocked accounts/providers, not production financial data.
+Browser tests require Google Chrome. All automated suites run against isolated synthetic workspaces and mocked providers.
 
 </details>
 
-## Inside the project
+---
 
-| Folder | Purpose |
+## Project Architecture
+
+| Path | Responsibility |
 | --- | --- |
-| `frontend/` | React screens, TypeScript, Vite and Capacitor configuration |
-| `backend/` | Python API, authentication, AI connections, Shortcuts endpoints and compiled web assets |
-| `mobile/` | Android plugin, encrypted storage, offline ledger and release tools |
-| `supabase/migrations/` | Account policies, relational schema, recurring bills and shortcut token tables |
-| `scripts/` | Frontend build and asset publishing |
-| `docs/` | Features, deployment, branding and release guides |
+| `frontend/` | React 19 UI, TypeScript modules, BD SMS parser, smart templates, Vitest & Capacitor config |
+| `backend/` | FastAPI routers, relational SQLModel ledger, BD parser, Shortcuts API, PDF statements & compiled SPA |
+| `mobile/` | Android Capacitor project, AES-GCM SQLite `Store`, Quick Tile, App Shortcuts, Widgets, Offline AI & APK builder |
+| `supabase/migrations/` | Sequential PostgreSQL schemas, RLS policies, relational tables & shortcut token storage |
+| `scripts/` | React production build script, icon tools, offline AI prep & relational migration helper |
+| `docs/` | Feature specification, deployment, security setup, offline AI, branding/licensing & Play release docs |
 
-Shared CSS, public branding and the standalone `/quick` iPhone Shortcut popup live in `backend/static/`. The committed React bundle supports Python-only hosting; it is regenerated by the frontend build script.
+---
 
-## Explore the docs
+## Documentation
 
-[Features](docs/FINANCE_FEATURES.md) · [Frontend](frontend/README.md) · [Android builds](mobile/README.md) · [Cloud deployment](docs/CLOUD_DEPLOYMENT.md) · [React migration](docs/REACT_MIGRATION.md) · [Google Play](docs/GOOGLE_PLAY_RELEASE.md)
+- [Feature & Accounting Reference](docs/FINANCE_FEATURES.md)
+- [Cloud Deployment (Vercel & Supabase)](docs/CLOUD_DEPLOYMENT.md)
+- [Account, OAuth, MFA & Passkeys Setup](docs/ACCOUNT_SETUP.md)
+- [Frontend Architecture](frontend/README.md)
+- [Android Builds, Shortcuts & Signing](mobile/README.md)
+- [Optional On-Device Offline AI](docs/OFFLINE_AI.md)
+- [Google Play Release Checklist](docs/GOOGLE_PLAY_RELEASE.md)
+- [Brand & Wallet Icon Attributions](docs/WALLET_LOGOS.md)
 
 ---
 
@@ -187,6 +214,6 @@ Shared CSS, public branding and the standalone `/quick` iPhone Shortcut popup li
 
 Created by **[Shahriar Morshed Jahin](https://github.com/shahriarjahin)** · **DigitXBD**
 
-[Report a problem](https://github.com/shahriarjahin/my-daily-hishab/issues) · [Browse releases](https://github.com/shahriarjahin/my-daily-hishab/releases)
+[Report an Issue](https://github.com/shahriarjahin/my-daily-hishab/issues) · [Releases](https://github.com/shahriarjahin/my-daily-hishab/releases)
 
 </div>

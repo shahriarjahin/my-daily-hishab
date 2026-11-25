@@ -1,91 +1,41 @@
-# Daily use and screenshot feature map
+# Hishab Feature & Accounting Reference
 
-All financial records, plans, categories and advisor history belong to the signed-in Supabase account.
-The existing workspace JSON format accepts these new collections; no additional SQL migration is required.
-Provider keys remain encrypted in the existing account configuration table.
+All cloud workspace records, plans, recurring bills, categories, shortcut tokens, and advisor history belong to the authenticated Supabase user and follow strict row-level ownership policies.
 
-## Enter money received
+## 1. Quick Entry & Automation
 
-Select Cash in Smart entry, type `70 tk cash paisi`, submit, and review the suggestion before saving.
-It should be Income, 70 BDT, Cash. Existing wallet balances are different: `cash 1500 tk ache` sets a
-reviewed current balance, rather than creating income. Manual entry and the floating + button's
-Income action are also available.
+| Capability | Where to find it | Behavior |
+| --- | --- | --- |
+| Quick templates & last wallet | Floating `+` → **Add entry** | Auto-derives up to 5 frequent chips (pinned items first); remembers the last-used wallet |
+| BD MFS & bank SMS parser | **Paste SMS** / Android **Share → Log in Hishab** | Parses bKash, Nagad, Rocket & bank SMS into income, expenses, or transfers with **Cash Out fee** separation |
+| Voice input | Floating `+` → **Voice** | Captures Web Speech (`en-US` / `bn-BD`) and fills amount, note, wallet, and suggested category |
+| Split bills | Floating `+` → **Split bill with friends** | Logs your share as an expense (optional self-inclusion) and creates per-friend receivables |
+| Optimistic UI & offline queue | Web dashboard & Android APK | Web saves reflect immediately and replay offline writes on reconnect; Android commits offline to encrypted SQLite |
+| Shortcuts & Back Tap (`/quick`) | **Settings → Data → Shortcut & Quick Webhook** | Generates scoped `hishab_sc_...` tokens with one-tap copy links/prompts for `/quick` (Top-3 wallets popup), iOS Shortcuts, Tasker, or MacroDroid |
+| Android Shortcuts, Tile & Widgets | Android 8.0+ APK | Launcher long-press shortcuts (**Quick Add**, **Paste SMS**, **Transfer**), Quick Settings tile (**Quick Hishab**), `ACTION_SEND` share receiver, and two Home Screen widgets (`4×2` Summary & `4×1` Quick Bar) |
 
-## What is available
+## 2. Core Accounting & Planning Rules
 
-| Reference function | Where to find it |
-| --- | --- |
-| Daily spending limit, days left and today's remaining allowance | Budgets |
-| Monthly spending cap, expected income and savings target | Plan → Budget → Monthly plan |
-| Needs / wants / savings allocation and editable percentages | Plan → Budget → Monthly plan |
-| Per-category limits and progress | Plan → Budget → Category budget |
-| AI allocation plan with editable amounts and review | Plan → Budget → AI auto-plan |
-| Cloud-saved advisor conversation | AI advisor |
-| SMS, payment memo and receipt text extraction | Transactions → Import |
-| JPEG, PNG and WebP receipt extraction, maximum 2 MB | Transactions → Import |
-| Income, expense and savings categories with colors and icons | Settings → Categories |
-| Rename categories while updating related records; archive unused categories | Settings → Categories → category |
-| Wallet and category multi-select, amount range, custom dates, reset | Transactions → Filters |
-| Today, week, month, year and all-time presets | Transactions → Period |
-| Opening balance history and income/expense/transfer filters | Transactions |
-| Export exactly the filtered view, including opening balances and movements | Transactions → Export view |
-| Spending charts, top categories, savings rate and budget remaining | Insights |
-| Month-end forecast, daily pace, biggest expense, active day and average expense | Insights |
-| Outstanding loans and receivables | Wallets → Loans |
-| Income, expense and transfer | Floating + button |
-| Savings, goals and regular trackers | Plan |
-| Loans and repayments | Wallets → Loans |
-| SMS and receipt import | Transactions → Import |
-| Wallet-to-wallet transfer bookkeeping | Wallets → Transfer or + → Transfer |
-| Reserve savings in a wallet and release reservations | Plan → Savings & goals |
-| Target-based savings goals, dates and contribution progress | Plan → Savings & goals |
-| Borrowed/lent money with partial repayment tracking | Wallets → Loans |
-| Regular spending, quantity counts, daily limits and period selection | Plan → Regulars |
-| Quick expense entry prefilled for a regular tracker | Regulars → Quick log |
+- **Wallet balance:** `opening_balance + income − expenses + incoming movements − outgoing movements`. Opening balances, loan principals, and inter-wallet transfers never inflate income or spending totals. Borrowed-loan repayments count as expenses once through their movement without a second wallet debit.
+- **Transfers & fees:** Inter-wallet transfers check unreserved funds before transferring. Optional transfer or Cash Out fees are stored alongside the movement as an expense from the source wallet.
+- **Savings & goals:** Savings reserve funds inside a wallet without changing the wallet's headline balance. Transfers, new savings, and lending cannot exceed unreserved funds (`wallet balance − reserved savings`).
+- **Loans & historical debt:** Borrowed/lent records support partial repayments atomically (`POST /api/loans/{id}/repayments`). Existing debt can be recorded with `affect_wallet=false` and optional `wallet_id=null` without altering current balances.
+- **Net position:** `total wallet balances + loans receivable − debt owed`.
+- **Daily allowance & forecast:** Daily allowance divides remaining monthly budget before today's expenses by remaining calendar days in Asia/Dhaka, then subtracts today's spending. Forecast estimates `month_spent / elapsed_days × days_in_month`.
+- **Recurring bills (`Plan → Bills`):** Tracks weekly, monthly, or yearly obligations with due dates and one-tap **Pay** (`POST /api/bills/{id}/pay`), creating the transaction and advancing `next_due_date` atomically.
+- **Regular trackers (`Plan → Regulars`):** Aggregates matching expenses and unit quantities against daily targets across daily, weekly (Mon–Sun), monthly, or yearly periods without double-counting quick logs.
+- **Insights & MoM comparison (`Insights`):** Displays 12-month income/expense series, category breakdown, Month-over-Month category deltas, top expenses, and spending pace projections.
+- **Activity & PDF Statements (`Activity`):** Multi-wallet/category filters, search, custom date presets, windowed history pagination, CSV export (**Settings → Data**), and downloadable branded PDF statements (`1`, `3`, `6`, `12` months or custom dates) generated server-side on web and offline on-device on Android.
 
-## How the numbers work
+## 3. Shortcut API Contract
 
-- Wallet balance = opening balance + income − expenses + incoming movements − outgoing movements.
-  Opening balances, loan principal and transfers never enter income or expense totals. Borrowed-loan repayments count as expenses through their existing movement, without a second wallet deduction.
-- Savings are earmarks inside wallets. They reduce funds available for everyday use without changing
-  the total wallet balance. The app prevents new reservations, transfers or lending beyond unreserved funds.
-  Existing expenses can exceed reservations; available funds then make the shortfall visible.
-- Net position = wallet money + loans receivable − debt owed. Repayments update outstanding amounts
-  and wallets atomically; overpayments are rejected. Received repayments are not income. Fully repaid loans leave the outstanding list; their dated repayment history stays available.
-- Daily allowance divides the budget remaining before today's expenses by the remaining calendar
-  days, including today. Today's expenses then reduce today's allowance. Dhaka dates are used throughout.
-- Forecast = spending so far / elapsed calendar days × days in the month. It is an estimate, not a guarantee.
-- Potential extra savings subtracts existing reservations, the remaining spending budget and outstanding
-  debt from wallet money. No amount is suggested until a spending cap is set.
-- The needs/wants/savings split uses expected monthly income when supplied, otherwise recorded monthly
-  income. Wallet opening balances and borrowing are never treated as earnings.
-- The default 50/30/20 split is an adjustable budgeting guideline. See the
-  [CFPB budgeting activity](https://www.consumerfinance.gov/consumer-tools/educator-tools/youth-financial-education/teach/activities/analyzing-budgets/).
-- Regular tracker quantities sum only expense quantities with the matching unit. Their spending comes
-  from the existing ledger, so quick logs are not counted twice. Weekly limits cover Monday–Sunday;
-  monthly and yearly limits use the full calendar period. Future dates are excluded from regular totals.
+When relational PostgreSQL mode is active, personal tokens (`hishab_sc_...`) authenticate two headless endpoints via `X-Shortcut-Token` (or `Authorization: Bearer`):
 
-## AI and deployment details
+- `GET /api/shortcuts/wallets` — returns `top_wallets` (up to 3 wallets ordered by transaction count descending) and all `wallets`.
+- `POST /api/shortcuts/log` — accepts natural text or raw SMS (`{ "text": "...", "wallet"?: "..." }`) or structured fields (`amount`, `description`, `category`, `type`, `wallet_id`/`wallet`), parses BD MFS transfers/fees or expenses, commits atomically, and returns updated wallet balance.
 
-Advisor and planning requests send an account summary and recent advisor conversation to a connected
-provider. Receipt images are processed in memory and are not saved in the workspace. Text-only Cohere
-and DeepSeek adapters are skipped for image requests. Other image adapters require a vision-capable model.
-Providers are tried in configured priority order automatically when a provider has unavailable credit,
-rate limits, invalid responses or other errors. An actual backup needs its own working key and credit.
+## 4. AI Integrations & Failover
 
-AI plans are suggestions. Previewing a plan changes no budgets or wallet entries. Applying a plan saves
-the reviewed settings and replaces category limits atomically. Receipt parsing always opens a review.
-Loan and transfer tools record bookkeeping; the app does not connect to banks or initiate payments.
-
-The service worker caches application assets only, never API responses, exports, sessions or finances.
-Runtime finance processing uses a disposable in-memory database. Vercel setup remains in
-[CLOUD_DEPLOYMENT.md](CLOUD_DEPLOYMENT.md); native packaging guidance remains in `mobile/README.md`.
-
-Vision protocols follow the official
-[Google image guide](https://ai.google.dev/gemini-api/docs/image-understanding),
-[OpenAI vision guide](https://developers.openai.com/api/docs/guides/images-vision), and
-[Anthropic vision guide](https://platform.claude.com/docs/en/build-with-claude/vision).
-
-Historical loan entry: POST /api/loans accepts affect_wallet=false, optional wallet_id=null and an original date to record outstanding debt without changing cash. New loans default to affect_wallet=true and require a wallet.
-
-Activity’s download icon generates PDF statements for 1, 3, 6 or 12 months, or custom dates, with wallet selection, running balances, Hishab branding and DigitXBD footer. Android renders and saves them entirely on-device, including offline. CSV remains available in Settings.
+- **Cloud AI (`Settings → AI connections`):** Advisor chat, natural-language entry, budget auto-plan, and JPEG/PNG/WebP receipt scanning (up to 2 MB) try enabled providers in ascending priority order, automatically failing over on rate limits, quota exhaustion, or network errors.
+- **Review-before-saving & privacy:** AI never mutates wallet balances directly without user confirmation. Receipt images are processed in memory and not persisted in the workspace.
+- **On-device Offline AI:** Optional ~630 MB GGUF model on 64-bit Android handles BDT text extraction offline without network traffic (see [OFFLINE_AI.md](OFFLINE_AI.md)).

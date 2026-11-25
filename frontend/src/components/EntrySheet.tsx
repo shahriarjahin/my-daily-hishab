@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useStore } from "../context";
 import { Modal, ErrorMessage } from "./UI";
 import { Icon } from "./Icon";
@@ -16,10 +16,14 @@ export function EntrySheet({
   close,
   transfer,
   smart,
+  initialText,
+  initialSms,
 }: {
   close: () => void;
   transfer: () => void;
   smart: () => void;
+  initialText?: string;
+  initialSms?: boolean;
 }) {
   const { state: s, mutate, busy, t, notify, money, language } = useStore();
   const defaultWallet = useMemo(() => {
@@ -167,6 +171,17 @@ export function EntrySheet({
     }
     setSmsOpen((v) => !v);
   };
+
+  useEffect(() => {
+    if (initialText) {
+      setSmsText(initialText);
+      const parsed = applyParsedInput(initialText);
+      if (parsed) notify("Parsed SMS");
+      else setSmsOpen(true);
+    } else if (initialSms) {
+      setSmsOpen(true);
+    }
+  }, [initialText, initialSms]);
 
   return (
     <Modal title="Add entry" close={close} className="money-sheet">

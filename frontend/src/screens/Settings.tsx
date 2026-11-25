@@ -10,7 +10,7 @@ import type { Provider, CloudStatus, Settings as SettingsType, ShortcutToken } f
 function ShortcutTokensSection() {
   const { state: s, t, notify } = useStore(),
     [tokens, setTokens] = useState<ShortcutToken[]>([]),
-    [label, setLabel] = useState("iPhone Shortcut"),
+    [label, setLabel] = useState("Shortcut"),
     [walletId, setWalletId] = useState<number>(s!.wallets[0]?.id || 0),
     [createdToken, setCreatedToken] = useState(""),
     [working, setWorking] = useState(false),
@@ -31,10 +31,10 @@ function ShortcutTokensSection() {
   const walletsUrl = `${origin}/api/shortcuts/wallets`;
   const quickUrl = createdToken ? `${origin}/quick#${createdToken}` : `${origin}/quick`;
   const popupPrompt = createdToken
-    ? `Create an iPhone shortcut named "Quick Hishab" with one action: Show Web View for "${quickUrl}".`
+    ? `Create a shortcut named "Quick Hishab" with one action: Show Web View for "${quickUrl}".`
     : "";
   const apiPrompt = createdToken
-    ? `Create an iPhone shortcut named "Quick Hishab" with these steps: 1) Ask for Input (Text) with prompt "Expense, income, or paste SMS". 2) Get Contents of URL GET "${walletsUrl}" with header "X-Shortcut-Token": "${createdToken}". 3) Get Dictionary Value for key "top_wallets" from Contents of URL, then Choose from List with prompt "Select Wallet". 4) Get Contents of URL POST "${endpointUrl}" with header "X-Shortcut-Token": "${createdToken}" and JSON body {"text": [Provided Input], "wallet": [Chosen Item]}. 5) Show Notification with the "description", "amount", "wallet", and "balance" from the response.`
+    ? `Create a shortcut named "Quick Hishab" with these steps: 1) Ask for Input (Text) with prompt "Expense, income, or paste SMS". 2) Get Contents of URL GET "${walletsUrl}" with header "X-Shortcut-Token": "${createdToken}". 3) Get Dictionary Value for key "top_wallets" from Contents of URL, then Choose from List with prompt "Select Wallet". 4) Get Contents of URL POST "${endpointUrl}" with header "X-Shortcut-Token": "${createdToken}" and JSON body {"text": [Provided Input], "wallet": [Chosen Item]}. 5) Show Notification with the "description", "amount", "wallet", and "balance" from the response.`
     : "";
 
   const copyText = (text: string) => {
@@ -44,9 +44,9 @@ function ShortcutTokensSection() {
 
   return (
     <Card className="section-gap">
-      <h2>{t("iPhone Shortcut & Quick Webhook")}</h2>
+      <h2>{t("Shortcut & Quick Webhook")}</h2>
       <p className="form-hint">
-        {t("Log expenses or paste bKash SMS straight from Apple Shortcuts, Action Button or Siri.")}
+        {t("Log expenses or paste bKash SMS from Shortcuts, back tap, Quick Tile or webhooks.")}
       </p>
       <form
         className="shortcut-create-form"
@@ -56,7 +56,7 @@ function ShortcutTokensSection() {
           setErr("");
           try {
             const res = await api<{ token: string; item: ShortcutToken }>("/shortcuts/tokens", "POST", {
-              label: label.trim() || "iPhone Shortcut",
+              label: label.trim() || "Shortcut",
               default_wallet_id: walletId || null,
             });
             setCreatedToken(res.token);
@@ -124,7 +124,7 @@ function ShortcutTokensSection() {
             </Button>
           </div>
           <small className="muted">
-            {t("Apple iOS 15+ blocks unsigned .shortcut files from websites, so copy a prompt above and paste it in Shortcuts.")}
+            {t("Apple iOS 15+ blocks unsigned .shortcut files, so copy a prompt above for Shortcuts. On Android, long-press Hishab or add a Quick Tile or Widget.")}
           </small>
         </div>
       )}
