@@ -26,8 +26,21 @@ function ShortcutTokensSection() {
     loadTokens();
   }, []);
 
-  const endpointUrl =
-    typeof window !== "undefined" ? `${window.location.origin}/api/shortcuts/log` : "/api/shortcuts/log";
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const endpointUrl = `${origin}/api/shortcuts/log`;
+  const walletsUrl = `${origin}/api/shortcuts/wallets`;
+  const quickUrl = createdToken ? `${origin}/quick#${createdToken}` : `${origin}/quick`;
+  const popupPrompt = createdToken
+    ? `Create an iPhone shortcut named "Quick Hishab" with one action: Show Web View for "${quickUrl}".`
+    : "";
+  const apiPrompt = createdToken
+    ? `Create an iPhone shortcut named "Quick Hishab" with these steps: 1) Ask for Input (Text) with prompt "Expense, income, or paste SMS". 2) Get Contents of URL GET "${walletsUrl}" with header "X-Shortcut-Token": "${createdToken}". 3) Get Dictionary Value for key "top_wallets" from Contents of URL, then Choose from List with prompt "Select Wallet". 4) Get Contents of URL POST "${endpointUrl}" with header "X-Shortcut-Token": "${createdToken}" and JSON body {"text": [Provided Input], "wallet": [Chosen Item]}. 5) Show Notification with the "description", "amount", "wallet", and "balance" from the response.`
+    : "";
+
+  const copyText = (text: string) => {
+    void navigator.clipboard?.writeText(text);
+    notify("Copied");
+  };
 
   return (
     <Card className="section-gap">
@@ -81,34 +94,38 @@ function ShortcutTokensSection() {
             {t("URL")}: {endpointUrl}
           </small>
           <small>
-            {t("Quick popup URL")}:{" "}
-            {`${typeof window !== "undefined" ? window.location.origin : ""}/quick#${createdToken}`}
+            {t("Quick popup URL")}: {quickUrl}
           </small>
           <small>
             {t("Header")}: X-Shortcut-Token · {t("JSON Body")}: {"{\"text\": \"Ask Each Time\"}"}
           </small>
           <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-            <Button
-              secondary
-              onClick={() => {
-                void navigator.clipboard?.writeText(createdToken);
-                notify("Copied");
-              }}
-            >
+            <Button secondary onClick={() => copyText(createdToken)}>
               {t("Copy token")}
             </Button>
+            <Button secondary onClick={() => copyText(quickUrl)}>
+              {t("Copy quick link")}
+            </Button>
+            <Button secondary onClick={() => copyText(popupPrompt)}>
+              {t("Copy popup prompt")}
+            </Button>
+            <Button secondary onClick={() => copyText(apiPrompt)}>
+              {t("Copy API prompt")}
+            </Button>
             <Button
               secondary
               onClick={() => {
-                void navigator.clipboard?.writeText(
-                  `${typeof window !== "undefined" ? window.location.origin : ""}/quick#${createdToken}`
-                );
-                notify("Copied");
+                if (typeof window !== "undefined") {
+                  window.location.href = "shortcuts://create-shortcut";
+                }
               }}
             >
-              {t("Copy quick link")}
+              {t("Open Shortcuts")}
             </Button>
           </div>
+          <small className="muted">
+            {t("Apple iOS 15+ blocks unsigned .shortcut files from websites, so copy a prompt above and paste it in Shortcuts.")}
+          </small>
         </div>
       )}
 
