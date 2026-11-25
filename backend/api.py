@@ -176,24 +176,39 @@ def require_row(session, model, row_id):
 
 
 @router.get("/state")
-def get_state(session: Session = Depends(get_session)):
+def get_state(tx_limit: int = 300, full: bool = False, session: Session = Depends(get_session)):
     from .ai import public_status
-    from .finance import finance_state, wallet_balance, reporting_entries, precompute_balances
+    from .finance import finance_state, wallet_balance, reporting_entries, precompute_balances, rows
     # Enable request-scoped query cache: each table is loaded at most once.
     session._row_cache = {}
     precompute_balances(session)
     user_id = getattr(session, "user_id", None)
     entries = reporting_entries(session)
-    wallets = session.exec(select(Wallet).where(Wallet.user_id == user_id).order_by(Wallet.id) if user_id else select(Wallet).order_by(Wallet.id)).all()
+    wallets = rows(session, Wallet)
     settings = session.get(AppSetting, 1) or AppSetting(user_id=user_id or "local")
     month = now().strftime("%Y-%m")
     budgets = []
-    for budget in session.exec(select(Budget).where(Budget.user_id == user_id).order_by(Budget.id) if user_id else select(Budget).order_by(Budget.id)).all():
+    for budget in rows(session, Budget):
         spent = total(t.amount for t in entries if t.type == "expense" and t.category == budget.category and local_date(t.date).strftime("%Y-%m") == month)
         budgets.append({"id": budget.id, "category": budget.category, "amount": budget.amount, "spent": spent})
-    cats = session.exec(select(Category).where(Category.user_id == user_id) if user_id else select(Category)).all()
+    cats = rows(session, Category)
+    total_count = len(entries)
+    if full or tx_limit <= 0 or total_count <= tx_limit:
+        visible = entries
+    else:
+        cutoff = (now() - timedelta(days=62)).date()
+        recent_count = 0
+        for e in entries:
+            if local_date(e.date).date() >= cutoff:
+                recent_count += 1
+            else:
+                break
+        window_size = min(1500, max(tx_limit, recent_count))
+        visible = entries[:window_size]
     return {
-        "transactions": [{**transaction_dict(t), **({"movement_id": t.movement_id} if hasattr(t, "movement_id") else {})} for t in entries],
+        "transactions": [{**transaction_dict(t), **({"movement_id": t.movement_id} if hasattr(t, "movement_id") else {})} for t in visible],
+        "has_more_transactions": len(visible) < total_count,
+        "total_transaction_count": total_count,
         "wallets": [{"id": w.id, "name": w.name, "opening_balance": w.opening_balance,
                      "balance": wallet_balance(session, w.id)} for w in wallets],
         "budgets": budgets,
@@ -202,6 +217,22 @@ def get_state(session: Session = Depends(get_session)):
         **finance_state(session),
         "configured": any(p["configured"] and p["enabled"] for p in public_status()["providers"]),
         "cloud_mode": hasattr(session, "revision"), "revision": getattr(session, "revision", None),
+    }
+
+
+@router.get("/transactions")
+def list_transactions(offset: int = 0, limit: int = 200, session: Session = Depends(get_session)):
+    from .finance import reporting_entries
+    session._row_cache = {}
+    safe_offset = max(0, offset)
+    safe_limit = max(1, min(50000, limit))
+    entries = reporting_entries(session)
+    total_count = len(entries)
+    page = entries[safe_offset:safe_offset + safe_limit]
+    return {
+        "transactions": [{**transaction_dict(t), **({"movement_id": t.movement_id} if hasattr(t, "movement_id") else {})} for t in page],
+        "total": total_count,
+        "has_more": safe_offset + len(page) < total_count,
     }
 
 

@@ -77,6 +77,47 @@ export interface Regular {
   daily_limit: number;
   unit: string;
 }
+export interface RecurringBill {
+  id: number;
+  name: string;
+  amount: number;
+  type: EntryType;
+  category: string;
+  wallet_id: number;
+  frequency: "weekly" | "monthly" | "yearly";
+  next_due_date: string;
+  note: string;
+  active: boolean;
+  last_paid_date?: string | null;
+}
+export interface ShortcutToken {
+  id: number;
+  label: string;
+  token_prefix: string;
+  default_wallet_id?: number | null;
+  created_at?: string | null;
+  last_used_at?: string | null;
+}
+export interface MonthlyTotal {
+  month: string;
+  income: number;
+  expense: number;
+}
+export interface PreviousMonthStats {
+  month: string;
+  spent: number;
+  income: number;
+  categories: Record<string, number>;
+}
+export interface QuickTemplate {
+  key: string;
+  description: string;
+  amount: number;
+  category: string;
+  type: EntryType;
+  wallet_id: number;
+  pinned?: boolean;
+}
 export interface Settings {
   name: string;
   theme: Theme;
@@ -112,11 +153,15 @@ export interface Planning {
   daily_average: number;
   savings_rate: number | null;
   groups: { name: string; percent: number; target: number; spent: number }[];
+  monthly_totals?: MonthlyTotal[];
+  previous_month?: PreviousMonthStats;
 }
 export interface WorkspaceState {
   revision: number;
   wallets: Wallet[];
   transactions: Transaction[];
+  has_more_transactions?: boolean;
+  total_transaction_count?: number;
   categories: string[];
   category_details: Category[];
   budgets: Budget[];
@@ -125,6 +170,7 @@ export interface WorkspaceState {
   loans: Loan[];
   movements: Movement[];
   regulars: Regular[];
+  recurring_bills?: RecurringBill[];
   settings: Settings;
   planning: Planning;
   advisor_messages: {

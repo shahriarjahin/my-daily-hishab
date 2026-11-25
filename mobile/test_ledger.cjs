@@ -116,3 +116,14 @@ test('repayment expense is derived once; principal correction preserves repaymen
  assert.throws(()=>change(w,'/loans/1','PUT',{...w.loans[0],affect_wallet:false,amount:99}));
  w=change(w,'/movements/2','DELETE');assert.equal(ledger.state(w).planning.spent,0);assert.equal(ledger.balance(w,1),1200);
 });
+
+test('transfer fees, split bills, and recurring bills calculate accurately offline',()=>{
+ let w=change(fresh(),'/wallets/1','PATCH',{opening_balance:5000});
+ w=change(w,'/transfers','POST',{from_wallet_id:1,to_wallet_id:2,amount:1000,fee:18.5,description:'Cash Out'});
+ assert.equal(ledger.balance(w,1),3981.5);assert.equal(ledger.balance(w,2),1000);
+ w=change(w,'/splits','POST',{description:'Dinner',category:'Food',wallet_id:1,my_share:200,shares:[{party:'Ali',amount:200},{party:'Sara',amount:200}]});
+ assert.equal(ledger.balance(w,1),3381.5);assert.equal(ledger.state(w).planning.receivable,400);
+ w=change(w,'/bills','POST',{name:'Wi-Fi',amount:1200,type:'expense',category:'Utilities',wallet_id:1,frequency:'monthly',next_due_date:'2026-01-31'});
+ w=change(w,'/bills/1/pay','POST',{});
+ assert.equal(ledger.balance(w,1),2181.5);assert.equal(w.recurring_bills[0].next_due_date,'2026-02-28');
+});

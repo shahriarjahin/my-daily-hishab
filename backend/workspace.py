@@ -7,7 +7,7 @@ from sqlmodel import Session, select
 from .database import ScopedSession
 from .models import (
     AppSetting, Budget, LedgerMigration, Transaction, Wallet, Category, default_categories,
-    Saving, Movement, Regular, Goal, Loan, AdvisorMessage
+    Saving, Movement, Regular, RecurringBill, Goal, Loan, AdvisorMessage
 )
 
 
@@ -25,6 +25,7 @@ class Workspace(BaseModel):
     loans: list[dict] = Field(default_factory=list, max_length=1000)
     advisor_messages: list[dict] = Field(default_factory=list, max_length=50)
     regulars: list[dict] = Field(default_factory=list, max_length=100)
+    recurring_bills: list[dict] = Field(default_factory=list, max_length=200)
 
     @field_validator("schema_version")
     @classmethod
@@ -49,7 +50,7 @@ def export_workspace(session):
 
 def validate_workspace(data):
     from .api import WalletInput, TransactionInput, BudgetInput, SettingsInput
-    from .finance import CategoryInput, PlanInput, COLLECTIONS, GoalInput, RegularInput, money
+    from .finance import CategoryInput, PlanInput, COLLECTIONS, GoalInput, RegularInput, BillInput, money
     parsed = Workspace.model_validate(data)
     if parsed.category_details is None:
         parsed.category_details = default_categories()
@@ -105,7 +106,7 @@ def validate_workspace(data):
     goal_ids = {r.get("id") for r in parsed.goals}
     loan_ids = {r.get("id") for r in parsed.loans}
     regular_categories = set()
-    for key in ("movements", "goals", "savings", "loans", "advisor_messages", "regulars"):
+    for key in ("movements", "goals", "savings", "loans", "advisor_messages", "regulars", "recurring_bills"):
         ids = set()
         for row in getattr(parsed, key):
             rid = row.get("id")
@@ -118,6 +119,10 @@ def validate_workspace(data):
                 money(row["amount"])
             if key == "goals":
                 GoalInput.model_validate({k: v for k, v in row.items() if k not in ("id", "user_id")})
+            if key == "recurring_bills":
+                valid_bill = BillInput.model_validate({k: v for k, v in row.items() if k not in ("id", "user_id", "last_paid_date")})
+                if valid_bill.wallet_id not in wallet_ids or valid_bill.category not in exact_names:
+                    raise ValueError("Recurring bill references a missing wallet or category.")
             if key == "regulars":
                 valid = RegularInput.model_validate({k: v for k, v in row.items() if k not in ("id", "user_id")})
                 if valid.category in regular_categories:
@@ -150,7 +155,7 @@ def import_workspace(session, raw):
     user_id = getattr(session, "user_id", "local")
     data = validate_workspace(raw)
     # Validation is complete before any row is replaced. This operation is one transaction.
-    for model in (Transaction, Budget, Saving, Movement, Regular, Goal, Loan, AdvisorMessage, Wallet, Category, AppSetting):
+    for model in (Transaction, Budget, Saving, Movement, Regular, RecurringBill, Goal, Loan, AdvisorMessage, Wallet, Category, AppSetting):
         if hasattr(model, "user_id"):
             session.exec(delete(model).where(model.user_id == user_id))
         else:

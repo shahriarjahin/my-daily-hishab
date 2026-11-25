@@ -158,17 +158,19 @@ export function Insights() {
           ),
         ),
         key = date.toISOString().slice(0, 7),
-        entries = s!.transactions.filter((r) => day(r.date).startsWith(key));
+        serverRow = s!.planning.monthly_totals?.find((m) => m.month === key),
+        entries = serverRow
+          ? []
+          : s!.transactions.filter((r) => day(r.date).startsWith(key)),
+        inc = serverRow ? serverRow.income : total(entries, "income"),
+        exp = serverRow ? serverRow.expense : total(entries, "expense");
       return {
         key,
         label: new Intl.DateTimeFormat(
           s!.settings.language === "bn" ? "bn-BD" : "en",
           { month: "short" },
         ).format(date),
-        value:
-          mode === "cashflow"
-            ? total(entries, "income") - total(entries, "expense")
-            : total(entries, mode),
+        value: mode === "cashflow" ? inc - exp : mode === "income" ? inc : exp,
       };
     }),
     max = Math.max(1, ...groups.map((g) => Math.abs(g.value))),
@@ -182,7 +184,42 @@ export function Insights() {
   const sorted = Object.entries(categories).sort((a, b) => b[1] - a[1]),
     expenses = rows.filter((r) => r.type === "expense"),
     biggest = [...expenses].sort((a, b) => b.amount - a.amount)[0],
-    p = s!.planning;
+    p = s!.planning,
+    prevStats = p.previous_month,
+    prevVal = prevStats
+      ? mode === "cashflow"
+        ? prevStats.income - prevStats.spent
+        : mode === "income"
+          ? prevStats.income
+          : prevStats.spent
+      : 0,
+    momPct =
+      prevVal > 0 ? Math.round(((value - prevVal) / prevVal) * 100) : null,
+    itemMap = new Map<string, { name: string; total: number; count: number }>();
+  for (const e of expenses) {
+    const norm = e.description.trim().toLowerCase();
+    const prev = itemMap.get(norm);
+    if (prev) {
+      prev.total += e.amount;
+      prev.count += 1;
+    } else {
+      itemMap.set(norm, { name: e.description.trim(), total: e.amount, count: 1 });
+    }
+  }
+  const topSpends = [...itemMap.values()]
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 5);
+  const categoryMovers = prevStats
+    ? [...new Set([...Object.keys(categories), ...Object.keys(prevStats.categories)])]
+        .map((cat) => ({
+          cat,
+          current: categories[cat] || 0,
+          delta: (categories[cat] || 0) - (prevStats.categories[cat] || 0),
+        }))
+        .filter((x) => Math.abs(x.delta) >= 1)
+        .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
+        .slice(0, 3)
+    : [];
   return (
     <>
       <Title>{t("Insights")}</Title>
@@ -213,7 +250,14 @@ export function Insights() {
             )}{" "}
             · {t("This month")}
           </small>
-          <strong className="insight-total">{money(value)}</strong>
+          <strong className="insight-total">
+            {money(value)}
+            {momPct !== null && (
+              <span className={"mom-badge " + (momPct > 0 && mode === "expense" ? "negative" : momPct < 0 && mode === "expense" ? "positive" : "")}>
+                {momPct > 0 ? "+" : ""}{momPct}% {t("vs last month")}
+              </span>
+            )}
+          </strong>
           <div
             className="modern-bars"
             role="img"
@@ -268,6 +312,41 @@ export function Insights() {
           {!sorted.length && <Empty />}
         </Card>
       </div>
+      {(topSpends.length > 0 || categoryMovers.length > 0) && (
+        <div className="modern-insights-grid section-gap">
+          {topSpends.length > 0 && (
+            <Card>
+              <h2>{t("Top items this month")}</h2>
+              <div className="insight-categories">
+                {topSpends.map((item) => (
+                  <div className="budget-line" key={item.name}>
+                    <span>
+                      {item.name} · <small className="muted">{item.count}×</small>
+                    </span>
+                    <strong>{money(item.total)}</strong>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+          {categoryMovers.length > 0 && mode === "expense" && (
+            <Card>
+              <h2>{t("Compared to last month")}</h2>
+              <div className="insight-categories">
+                {categoryMovers.map((m) => (
+                  <div className="budget-line" key={m.cat}>
+                    <span>{t(m.cat)}</span>
+                    <strong className={m.delta > 0 ? "negative" : "positive"}>
+                      {m.delta > 0 ? "+" : ""}
+                      {money(m.delta)}
+                    </strong>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+        </div>
+      )}
       <details className="modern-plan-details">
         <summary>{t("Forecast & spending details")}</summary>
         <Card>

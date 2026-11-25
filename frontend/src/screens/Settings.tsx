@@ -5,7 +5,130 @@ import { Title, Card, Button, ErrorMessage, Modal } from "../components/UI";
 import { Icon } from "../components/Icon";
 import { OfflineAiSettings } from "../components/OfflineAiSettings";
 import { formFactory, type Editor } from "../forms";
-import type { Provider, CloudStatus, Settings as SettingsType } from "../types";
+import type { Provider, CloudStatus, Settings as SettingsType, ShortcutToken } from "../types";
+
+function ShortcutTokensSection() {
+  const { state: s, t, notify } = useStore(),
+    [tokens, setTokens] = useState<ShortcutToken[]>([]),
+    [label, setLabel] = useState("iPhone Shortcut"),
+    [walletId, setWalletId] = useState<number>(s!.wallets[0]?.id || 0),
+    [createdToken, setCreatedToken] = useState(""),
+    [working, setWorking] = useState(false),
+    [err, setErr] = useState("");
+
+  const loadTokens = () => {
+    void api<{ tokens: ShortcutToken[] }>("/shortcuts/tokens")
+      .then((res) => setTokens(res.tokens))
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    loadTokens();
+  }, []);
+
+  const endpointUrl =
+    typeof window !== "undefined" ? `${window.location.origin}/api/shortcuts/log` : "/api/shortcuts/log";
+
+  return (
+    <Card className="section-gap">
+      <h2>{t("iPhone Shortcut & Quick Webhook")}</h2>
+      <p className="form-hint">
+        {t("Log expenses or paste bKash SMS straight from Apple Shortcuts, Action Button or Siri.")}
+      </p>
+      <form
+        className="shortcut-create-form"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          setWorking(true);
+          setErr("");
+          try {
+            const res = await api<{ token: string; item: ShortcutToken }>("/shortcuts/tokens", "POST", {
+              label: label.trim() || "iPhone Shortcut",
+              default_wallet_id: walletId || null,
+            });
+            setCreatedToken(res.token);
+            setTokens((prev) => [...prev, res.item]);
+            notify("Saved");
+          } catch (error) {
+            setErr((error as Error).message);
+          } finally {
+            setWorking(false);
+          }
+        }}
+      >
+        <label className="form-field">
+          {t("Shortcut label")}
+          <input value={label} onChange={(e) => setLabel(e.target.value)} maxLength={60} required />
+        </label>
+        <label className="form-field">
+          {t("Default wallet")}
+          <select value={walletId} onChange={(e) => setWalletId(Number(e.target.value))}>
+            {s!.wallets.map((w) => (
+              <option key={w.id} value={w.id}>{w.name}</option>
+            ))}
+          </select>
+        </label>
+        <Button type="submit" secondary disabled={working}>
+          {t("Generate token")}
+        </Button>
+      </form>
+
+      {createdToken && (
+        <div className="shortcut-secret-box">
+          <strong>{t("Copy token now (shown once)")}</strong>
+          <code>{createdToken}</code>
+          <small>
+            {t("URL")}: {endpointUrl}
+          </small>
+          <small>
+            {t("Header")}: X-Shortcut-Token · {t("JSON Body")}: {"{\"text\": \"Ask Each Time\"}"}
+          </small>
+          <Button
+            secondary
+            onClick={() => {
+              void navigator.clipboard?.writeText(createdToken);
+              notify("Copied");
+            }}
+          >
+            {t("Copy token")}
+          </Button>
+        </div>
+      )}
+
+      {tokens.length > 0 && (
+        <div className="shortcut-token-list">
+          {tokens.map((tok) => (
+            <div key={tok.id} className="shortcut-token-row">
+              <div>
+                <strong>{tok.label}</strong>
+                <small className="muted">
+                  {tok.token_prefix}
+                  {tok.last_used_at ? ` · ${t("Used")}: ${tok.last_used_at.slice(0, 10)}` : ""}
+                </small>
+              </div>
+              <button
+                type="button"
+                className="text-button"
+                onClick={async () => {
+                  try {
+                    await api(`/shortcuts/tokens/${tok.id}`, "DELETE");
+                    setTokens((prev) => prev.filter((x) => x.id !== tok.id));
+                    notify("Deleted");
+                  } catch (error) {
+                    setErr((error as Error).message);
+                  }
+                }}
+              >
+                {t("Revoke")}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      <ErrorMessage message={err} />
+    </Card>
+  );
+}
 function DeviceSettings() {
   const { t, notify, refresh } = useStore(),
     [status, setStatus] = useState<CloudStatus | null>(null),
@@ -263,6 +386,12 @@ export function SettingsScreen({
             secondary
             onClick={async () => {
               try {
+                if (s!.has_more_transactions && !native) {
+                  const res = await fetch("/api/export.csv", { credentials: "same-origin" });
+                  if (!res.ok) throw new Error("Export failed.");
+                  await exportFile("hishab-transactions.csv", await res.text(), "text/csv");
+                  return;
+                }
                 const safe = (v: unknown) => {
                   let text = String(v ?? "");
                   if (/^\s*[=+@-]/.test(text)) text = "'" + text;
@@ -319,10 +448,11 @@ export function SettingsScreen({
             </Button>
           )}
           <p className="form-hint">
-            {t("{count} entries", { count: s!.transactions.length })} ·{" "}
+            {t("{count} entries", { count: s!.total_transaction_count || s!.transactions.length })} ·{" "}
             {t("{count} wallets", { count: s!.wallets.length })}
           </p>
         </Card>
+        {!native && <ShortcutTokensSection />}
         {
           <Card className="section-gap">
             <h2>{t("Import previous records")}</h2>

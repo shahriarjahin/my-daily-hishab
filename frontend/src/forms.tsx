@@ -12,6 +12,7 @@ import type {
   Loan,
   Provider,
   Saving,
+  RecurringBill,
 } from "./types";
 import { day, dated } from "./utils";
 import { Button, ErrorMessage, Modal } from "./components/UI";
@@ -29,6 +30,7 @@ export interface Field {
     | "url"
     | "textarea";
   options?: { value: string | number; label: string }[];
+  filterOptions?: (values: Values) => { value: string | number; label: string }[];
   required?: boolean;
   min?: number;
   max?: number;
@@ -87,7 +89,7 @@ export function RecordForm({
                   required={f.required !== false}
                   onChange={(e) => update(f.name, e.target.value)}
                 >
-                  {f.options?.map((o) => (
+                  {(f.filterOptions ? f.filterOptions(values) : f.options)?.map((o) => (
                     <option key={o.value} value={o.value}>
                       {t(o.label)}
                     </option>
@@ -179,6 +181,9 @@ export function formFactory(s: WorkspaceState) {
     expense = s.category_details
       .filter((c) => !c.archived && ["needs", "wants"].includes(c.bucket))
       .map((c) => c.name),
+    income = s.category_details
+      .filter((c) => !c.archived && c.bucket === "income")
+      .map((c) => c.name),
     saving = s.category_details
       .filter((c) => !c.archived && c.bucket === "savings")
       .map((c) => c.name);
@@ -231,15 +236,20 @@ export function formFactory(s: WorkspaceState) {
         from_wallet_id: s.wallets[0]?.id,
         to_wallet_id: s.wallets[1]?.id || s.wallets[0]?.id,
         amount: "",
+        fee: "",
         description: "Wallet transfer",
       },
       fields: [
         select("from_wallet_id", "From wallet", wallets),
         select("to_wallet_id", "To wallet", wallets),
         amount(),
+        { ...amount("fee", "Fee / Charge"), min: 0, required: false },
         { name: "description", label: "Description" },
       ],
-      prepare: moneyFields,
+      prepare: (v) => ({
+        ...moneyFields(v),
+        fee: v.fee === "" || v.fee == null ? 0 : Number(v.fee),
+      }),
     }),
     budget: (b?: Budget): FormSpec => ({
       title: "Category budget",
@@ -445,9 +455,44 @@ export function formFactory(s: WorkspaceState) {
       fields: [
         { name: "name", label: "Name" },
         select("category", "Category", opts(expense)),
-        { ...amount("daily_limit", "Daily limit"), min: 0 },
+        { name: "daily_limit", label: "Daily limit", type: "number", min: 0, step: "0.01" },
         { name: "unit", label: "Unit" },
       ],
+    }),
+    bill: (b?: RecurringBill): FormSpec => ({
+      title: b ? "Edit recurring bill" : "Add recurring bill",
+      path: "/bills" + (b ? "/" + b.id : ""),
+      method: b ? "PUT" : "POST",
+      values: {
+        name: b?.name || "",
+        type: b?.type || "expense",
+        amount: b?.amount || "",
+        category: b?.category || expense[0] || "Rent",
+        wallet_id: b?.wallet_id || s.wallets[0]?.id,
+        frequency: b?.frequency || "monthly",
+        next_due_date: b?.next_due_date || day(),
+        note: b?.note || "",
+        active: b?.active ?? true,
+      },
+      fields: [
+        { name: "name", label: "Name" },
+        select("type", "Type", opts(["expense", "income"])),
+        amount(),
+        {
+          ...select("category", "Category", opts([...expense, ...income])),
+          filterOptions: (v) => opts(v.type === "income" ? income : expense),
+        },
+        select("wallet_id", "Wallet", wallets),
+        select("frequency", "Frequency", opts(["weekly", "monthly", "yearly"])),
+        { name: "next_due_date", label: "Next due date", type: "date" },
+        { name: "note", label: "Note", required: false },
+        { name: "active", label: "Active", type: "checkbox" },
+      ],
+      prepare: (v) => {
+        const list = v.type === "income" ? income : expense;
+        const cat = list.includes(String(v.category)) ? v.category : list[0];
+        return { ...moneyFields(v), category: cat, active: Boolean(v.active) };
+      },
     }),
     provider: (p: Provider): FormSpec => ({
       title: p.name,

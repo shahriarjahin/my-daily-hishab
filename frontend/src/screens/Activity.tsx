@@ -13,8 +13,9 @@ export function Activity({
   edit: Editor;
   remove: (path: string, label: string) => void;
 }) {
-  const { state: s, t, money } = useStore(),
+  const { state: s, t, money, loadMoreTransactions } = useStore(),
     [search, setSearch] = useState(""),
+    [loadingMore, setLoadingMore] = useState(false),
     [type, setType] = useState("all"),
     [period, setPeriod] = useState("all"),
     [wallet, setWallet] = useState(""),
@@ -337,6 +338,30 @@ export function Activity({
         <Button secondary onClick={() => setVisible((n) => n + 100)}>
           {t("Show more")}
         </Button>
+      )}
+      {s!.has_more_transactions && (
+        <div className="history-window-banner">
+          <small className="muted">
+            {t("Loaded {count} of {total}", {
+              count: s!.transactions.length,
+              total: s!.total_transaction_count || s!.transactions.length,
+            })}
+          </small>
+          <Button
+            secondary
+            disabled={loadingMore}
+            onClick={async () => {
+              setLoadingMore(true);
+              try {
+                await loadMoreTransactions(Boolean(search || from || to || period === "year" || period === "all"));
+              } finally {
+                setLoadingMore(false);
+              }
+            }}
+          >
+            {loadingMore ? t("Loading...") : t("Load older entries")}
+          </Button>
+        </div>
       )}
     </>
   );

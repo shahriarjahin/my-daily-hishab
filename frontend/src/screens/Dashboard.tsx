@@ -2,11 +2,12 @@ import { useState } from "react";
 import { useStore } from "../context";
 import { Card, Title, Empty } from "../components/UI";
 import { Icon } from "../components/Icon";
-import { day, time, total, palette, walletLogo } from "../utils";
+import { day, dated, time, total, palette, walletLogo } from "../utils";
 import type { Transaction } from "../types";
 import type { Editor } from "../forms";
 import { formFactory } from "../forms";
 import { cashFlowSeries } from "../cashFlow";
+import { deriveQuickTemplates, setLastWalletId } from "../smartEntry";
 export function TransactionRow({
   entry,
   edit,
@@ -159,9 +160,14 @@ export function Dashboard({
   add: () => void;
   remove: (path: string, label: string) => void;
 }) {
-  const { state: s, cloud, money, t, navigate, refresh } = useStore(),
+  const { state: s, cloud, money, t, navigate, refresh, mutate, busy, notify, pendingSync, syncPending } = useStore(),
     [period, setPeriod] = useState("month");
   const today = day(),
+    plus7 = new Date(new Date(today + "T12:00:00Z").getTime() + 7 * 86400000).toISOString().slice(0, 10),
+    dueBills = (s!.recurring_bills || [])
+      .filter((b) => b.active && b.next_due_date <= plus7)
+      .sort((a, b) => a.next_due_date.localeCompare(b.next_due_date)),
+    quickTemplates = deriveQuickTemplates(s!.transactions).slice(0, 3),
     start =
       period === "year"
         ? today.slice(0, 4) + "-01-01"
@@ -179,6 +185,14 @@ export function Dashboard({
   return (
     <>
       <Title>Hishab</Title>
+      {pendingSync > 0 && (
+        <div className="offline-banner" role="status">
+          <span>{t("Saved offline")} · {t("{count} pending sync", { count: pendingSync })}</span>
+          <button type="button" className="text-button" onClick={() => void syncPending()}>
+            {t("Sync now")}
+          </button>
+        </div>
+      )}
       <div className="modern-dashboard">
         <div className="cash-main">
           <section className="cash-hero">
@@ -317,6 +331,39 @@ export function Dashboard({
             <button className="primary-button" onClick={add}>
               {t("Add entry")}
             </button>
+            {quickTemplates.length > 0 && (
+              <div className="quick-templates home-templates">
+                {quickTemplates.map((tpl) => (
+                  <button
+                    key={tpl.key}
+                    type="button"
+                    className={"chip quick-chip " + (tpl.pinned ? "pinned" : "")}
+                    disabled={busy}
+                    onClick={async () => {
+                      setLastWalletId(tpl.wallet_id);
+                      const res = (await mutate("/transactions", "POST", {
+                        transactions: [
+                          {
+                            amount: tpl.amount,
+                            type: tpl.type,
+                            category: tpl.category,
+                            wallet_id: tpl.wallet_id,
+                            date: dated(today),
+                            description: tpl.description,
+                            quantity: null,
+                            unit: "",
+                          },
+                        ],
+                      })) as { queued?: boolean } | undefined;
+                      notify(res?.queued ? "Saved offline" : "Saved");
+                    }}
+                  >
+                    <span>{tpl.description}</span>
+                    <strong>{money(tpl.amount)}</strong>
+                  </button>
+                ))}
+              </div>
+            )}
             {(s!.settings.ai_enabled || cloud?.offline_ai?.enabled) && (
               <button
                 className="text-button"
@@ -326,6 +373,37 @@ export function Dashboard({
               </button>
             )}
           </Card>
+          {dueBills.length > 0 && (
+            <Card className="due-bills-card">
+              <div className="section-title">
+                <h2>{t("Upcoming bills")}</h2>
+                <button className="text-button" onClick={() => navigate("regulars")}>
+                  {t("View all")}
+                </button>
+              </div>
+              {dueBills.slice(0, 3).map((b) => (
+                <div className="due-bill-row" key={b.id}>
+                  <div>
+                    <strong>{b.name}</strong>
+                    <small className={b.next_due_date < today ? "negative" : "muted"}>
+                      {b.next_due_date < today ? t("Overdue") : b.next_due_date} · {money(b.amount)}
+                    </small>
+                  </div>
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    disabled={busy}
+                    onClick={async () => {
+                      await mutate(`/bills/${b.id}/pay`, "POST", {});
+                      notify("Saved");
+                    }}
+                  >
+                    {b.type === "income" ? t("Log income") : t("Mark paid")}
+                  </button>
+                </div>
+              ))}
+            </Card>
+          )}
           <section className="modern-recent">
             <div className="section-title">
               <h2>{t("Recent")}</h2>

@@ -29,6 +29,11 @@ const paths: Record<string, string> = {
   other: "M5 12h1m5 0h1m5 0h1",
   utilities: "m13 2-9 12h7l-1 8 10-13h-8z",
   shopping: "M4 7h16l1 14H3zM8 8V6a4 4 0 0 1 8 0v2",
+  mic: "M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3zM19 10v2a7 7 0 0 1-14 0v-2M12 19v3",
+  sms: "M4 5h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H8l-4 4V7a2 2 0 0 1 2-2z",
+  bill: "M6 3h12v18l-3-2-3 2-3-2-3 2V3zM9 8h6M9 12h6",
+  split: "M16 3h5v5M8 3H3v5M21 3l-7 7v11M3 3l7 7",
+  pin: "m12 17 0 5M9 11V4h6v7l2 3H7l2-3z",
 };
 // Twelve evenly spaced teeth, with a clear circular centre at small sizes.
 const gear =

@@ -302,7 +302,7 @@ def import_previous_records(body: ImportInput, session: Session = Depends(get_se
     if session.revision != body.expected_revision:
         raise HTTPException(409, "Your cloud workspace changed. Reload before importing.")
     existing = export_workspace(session)
-    if any(existing[key] for key in ("transactions", "budgets", "movements", "loans", "savings", "goals", "regulars", "advisor_messages")) or any(w["opening_balance"] for w in existing["wallets"]):
+    if any(existing[key] for key in ("transactions", "budgets", "movements", "loans", "savings", "goals", "regulars", "recurring_bills", "advisor_messages")) or any(w["opening_balance"] for w in existing["wallets"]):
         raise HTTPException(409, "Import is only available for an empty account. Existing cloud data will not be replaced.")
     try:
         data = validate_workspace(body.data)

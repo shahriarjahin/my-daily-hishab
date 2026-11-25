@@ -14,6 +14,7 @@ export function restoreBackup(current: any, raw: any) {
     loans: 1000,
     advisor_messages: 50,
     regulars: 100,
+    recurring_bills: 200,
   };
   const check = (ok: unknown) => {
     if (!ok)
@@ -31,6 +32,7 @@ export function restoreBackup(current: any, raw: any) {
       "savings",
       "goals",
       "regulars",
+      "recurring_bills",
       "advisor_messages",
     ].some((k) => current[k]?.length) ||
     current.wallets.some((w: any) => w.opening_balance)
@@ -39,6 +41,7 @@ export function restoreBackup(current: any, raw: any) {
       "Import is only available for an empty account. Existing records will not be replaced.",
     );
   for (const [key, limit] of Object.entries(lists)) {
+    if (key === "recurring_bills" && raw[key] === undefined) continue;
     check(Array.isArray(raw[key]) && raw[key].length <= limit);
     const ids = new Set();
     for (const r of raw[key]) {

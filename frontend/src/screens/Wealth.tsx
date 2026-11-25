@@ -13,9 +13,10 @@ export function Wealth({
   remove: (path: string, label: string) => void;
 }) {
   const [repaymentLimit, setRepaymentLimit] = useState(100);
-  const { state: s, route, t, money, navigate } = useStore(),
+  const { state: s, route, t, money, navigate, mutate, busy, notify } = useStore(),
     forms = formFactory(s!),
     activeLoans = s!.loans.filter((loan) => loan.amount > loan.repaid),
+    bills = [...(s!.recurring_bills || [])].sort((a, b) => a.next_due_date.localeCompare(b.next_due_date)),
     repayments = s!.movements
       .filter((m) => m.kind === "repayment")
       .sort((a, b) => Date.parse(b.date) - Date.parse(a.date) || b.id - a.id);
@@ -306,53 +307,125 @@ export function Wealth({
       )}
       {route === "regulars" && (
         <>
-          <Button onClick={() => edit(forms.regular())}>
-            {t("Add")} {t("Regulars")}
-          </Button>
-          <div className="record-grid section-gap">
-            {s!.regulars.map((r) => {
-              const entries = s!.transactions.filter(
-                  (x) =>
-                    x.type === "expense" &&
-                    x.category === r.category &&
-                    day(x.date) === day(),
-                ),
-                spent = total(entries);
-              return (
-                <Card key={r.id} className="goal-card regular-card">
-                  <div className="goal-card-header">
-                    <h2>{r.name}</h2>
-                    <div className="goal-card-actions">
-                      <button
-                        type="button"
-                        className="icon-button"
-                        aria-label={t("Edit {name}", { name: r.name })}
-                        title={t("Edit")}
-                        onClick={() => edit(forms.regular(r))}
-                      >
-                        <Icon name="edit" />
-                      </button>
-                      <button
-                        type="button"
-                        className="icon-button goal-delete"
-                        aria-label={t("Delete {name}", { name: r.name })}
-                        title={t("Delete")}
-                        onClick={() => remove("/regulars/" + r.id, r.name)}
-                      >
-                        <Icon name="trash" />
-                      </button>
-                    </div>
-                  </div>
-                  <strong className="insight-total">{money(spent)}</strong>
-                  <p className="muted">
-                    {entries.reduce((n, x) => n + (x.quantity || 0), 0)}{" "}
-                    {t(r.unit)} · {t("Today")}
-                  </p>
-                  <Progress used={spent} limit={r.daily_limit} label={r.name} />
-                </Card>
-              );
-            })}
+          <div className="toolbar">
+            <Button onClick={() => edit(forms.bill())}>
+              {t("Add recurring bill")}
+            </Button>
+            <Button secondary onClick={() => edit(forms.regular())}>
+              {t("Add daily tracker")}
+            </Button>
           </div>
+
+          {bills.length > 0 && (
+            <section className="section-gap">
+              <h2>{t("Monthly & recurring bills")}</h2>
+              <div className="record-grid section-gap">
+                {bills.map((b) => {
+                  const overdue = b.active && b.next_due_date < day();
+                  const walletName = s!.wallets.find((w) => w.id === b.wallet_id)?.name || "";
+                  return (
+                    <Card key={b.id} className="goal-card regular-card">
+                      <div className="goal-card-header">
+                        <h2>{b.name}</h2>
+                        <div className="goal-card-actions">
+                          <button
+                            type="button"
+                            className="icon-button"
+                            aria-label={t("Edit {name}", { name: b.name })}
+                            title={t("Edit")}
+                            onClick={() => edit(forms.bill(b))}
+                          >
+                            <Icon name="edit" />
+                          </button>
+                          <button
+                            type="button"
+                            className="icon-button goal-delete"
+                            aria-label={t("Delete {name}", { name: b.name })}
+                            title={t("Delete")}
+                            onClick={() => remove("/bills/" + b.id, b.name)}
+                          >
+                            <Icon name="trash" />
+                          </button>
+                        </div>
+                      </div>
+                      <strong className={"insight-total " + (b.type === "income" ? "positive" : "")}>
+                        {b.type === "income" ? "+" : ""}{money(b.amount)}
+                      </strong>
+                      <p className={overdue ? "negative" : "muted"}>
+                        {t(b.frequency)} · {overdue ? t("Overdue") + ": " : t("Due") + ": "}
+                        {b.next_due_date}
+                        {walletName ? " · " + walletName : ""}
+                      </p>
+                      {b.active ? (
+                        <Button
+                          secondary
+                          disabled={busy}
+                          onClick={async () => {
+                            await mutate(`/bills/${b.id}/pay`, "POST", {});
+                            notify("Saved");
+                          }}
+                        >
+                          {b.type === "income" ? t("Log income") : t("Mark paid")}
+                        </Button>
+                      ) : (
+                        <small className="muted">{t("Paused")}</small>
+                      )}
+                    </Card>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
+          {s!.regulars.length > 0 && (
+            <section className="section-gap">
+              <h2>{t("Daily trackers")}</h2>
+              <div className="record-grid section-gap">
+                {s!.regulars.map((r) => {
+                  const entries = s!.transactions.filter(
+                      (x) =>
+                        x.type === "expense" &&
+                        x.category === r.category &&
+                        day(x.date) === day(),
+                    ),
+                    spent = total(entries);
+                  return (
+                    <Card key={r.id} className="goal-card regular-card">
+                      <div className="goal-card-header">
+                        <h2>{r.name}</h2>
+                        <div className="goal-card-actions">
+                          <button
+                            type="button"
+                            className="icon-button"
+                            aria-label={t("Edit {name}", { name: r.name })}
+                            title={t("Edit")}
+                            onClick={() => edit(forms.regular(r))}
+                          >
+                            <Icon name="edit" />
+                          </button>
+                          <button
+                            type="button"
+                            className="icon-button goal-delete"
+                            aria-label={t("Delete {name}", { name: r.name })}
+                            title={t("Delete")}
+                            onClick={() => remove("/regulars/" + r.id, r.name)}
+                          >
+                            <Icon name="trash" />
+                          </button>
+                        </div>
+                      </div>
+                      <strong className="insight-total">{money(spent)}</strong>
+                      <p className="muted">
+                        {entries.reduce((n, x) => n + (x.quantity || 0), 0)}{" "}
+                        {t(r.unit)} · {t("Today")}
+                      </p>
+                      <Progress used={spent} limit={r.daily_limit} label={r.name} />
+                    </Card>
+                  );
+                })}
+              </div>
+            </section>
+          )}
         </>
       )}
       {route === "categories" && (
@@ -395,7 +468,7 @@ export function Wealth({
         </>
       )}
       {((route === "goals" && !s!.goals.length) ||
-        (route === "regulars" && !s!.regulars.length)) && <Empty />}
+        (route === "regulars" && !s!.regulars.length && !bills.length)) && <Empty />}
     </>
   );
 }

@@ -845,3 +845,159 @@ button:focus-visible {
 [data-route="budgets"] .modern-plan-details {
   margin-top: 0;
 }
+
+.offline-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line));
+  background: color-mix(in srgb, var(--accent) 12%, var(--panel));
+  font-size: 13px;
+}
+.quick-templates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0 4px;
+}
+.home-templates {
+  margin: 0 0 10px;
+}
+.quick-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  padding: 6px 11px;
+}
+.quick-chip.pinned {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+}
+.sms-transfer-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  margin: 10px 0;
+  border-radius: 14px;
+  background: var(--panel2);
+  border: 1px solid var(--line);
+}
+.sms-transfer-banner > div {
+  display: grid;
+  gap: 2px;
+}
+.sms-transfer-banner small {
+  color: var(--muted);
+}
+.sms-paste-box {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0 12px;
+}
+.sms-paste-box textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border-radius: 12px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  background: var(--panel2);
+  color: var(--text);
+  font: inherit;
+}
+.split-box {
+  display: grid;
+  gap: 10px;
+  padding-top: 8px;
+}
+.split-box label {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+}
+.entry-save-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+.entry-save-row .pad-save {
+  flex: 1;
+  margin-top: 0;
+}
+.entry-assists button.active {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.due-bills-card .due-bill-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+.due-bills-card .due-bill-row:first-of-type {
+  border-top: 0;
+}
+.due-bills-card .due-bill-row > div {
+  display: grid;
+  gap: 2px;
+}
+.mom-badge {
+  font-size: 12px;
+  font-weight: 500;
+  margin-left: 10px;
+  color: var(--muted);
+}
+.history-window-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+.shortcut-create-form {
+  display: grid;
+  gap: 12px;
+  margin: 12px 0;
+}
+.shortcut-secret-box {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  margin: 12px 0;
+  border-radius: 14px;
+  background: var(--panel2);
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line));
+}
+.shortcut-secret-box code {
+  word-break: break-all;
+  padding: 8px;
+  border-radius: 8px;
+  background: var(--panel);
+  font-size: 12px;
+}
+.shortcut-token-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+.shortcut-token-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+.shortcut-token-row > div {
+  display: grid;
+  gap: 2px;
+}

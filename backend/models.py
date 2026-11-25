@@ -178,6 +178,34 @@ class Regular(SQLModel, table=True):
     unit: str = "pcs"
 
 
+class RecurringBill(SQLModel, table=True):
+    __tablename__ = "recurring_bills"
+    user_id: str = Field(default="local", primary_key=True, sa_type=UserID)
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str
+    amount: float
+    type: str = "expense"
+    category: str
+    wallet_id: int
+    frequency: str = "monthly"
+    next_due_date: str
+    note: str = ""
+    active: bool = True
+    last_paid_date: Optional[str] = None
+
+
+class ShortcutToken(SQLModel, table=True):
+    __tablename__ = "shortcut_tokens"
+    user_id: str = Field(default="local", primary_key=True, sa_type=UserID)
+    id: Optional[int] = Field(default=None, primary_key=True)
+    label: str
+    token_hash: str
+    token_prefix: str
+    default_wallet_id: Optional[int] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    last_used_at: Optional[datetime] = None
+
+
 def default_categories(user_id="local"):
     names = ["Food", "Transport", "Shopping", "Utilities", "Health", "Education", "Entertainment", "Rent", "Gifts", "Travel", "Salary", "Business", "Savings", "Other",
              "Freelance", "Investment", "Allowance", "Other Income", "DPS / FDR", "Bank Deposit", "Provident Fund", "Gold & Assets", "Other Savings"]

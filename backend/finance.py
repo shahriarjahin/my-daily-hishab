@@ -2,7 +2,7 @@
 import calendar
 import json
 from types import SimpleNamespace
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Literal
 
@@ -12,11 +12,12 @@ from sqlmodel import Session, select
 
 from .api import Input, money, total, now, local_date, ensure_wallet, ensure_category, require_row
 from .database import get_session
-from .models import AppSetting, Budget, Category, Transaction, Wallet, Movement, Goal, Saving, Loan, AdvisorMessage, Regular
+from .models import AppSetting, Budget, Category, Transaction, Wallet, Movement, Goal, Saving, Loan, AdvisorMessage, Regular, RecurringBill
 
 router = APIRouter(prefix="/api")
 COLLECTIONS = {"category_details": Category, "movements": Movement, "goals": Goal,
-               "savings": Saving, "loans": Loan, "advisor_messages": AdvisorMessage, "regulars": Regular}
+               "savings": Saving, "loans": Loan, "advisor_messages": AdvisorMessage, "regulars": Regular,
+               "recurring_bills": RecurringBill}
 
 
 def rows(session, model):
@@ -99,10 +100,34 @@ def finance_state(session):
     today = now().date()
     month = today.isoformat()[:7]
     settings = session.get(AppSetting, 1) or AppSetting()
-    entries = [t for t in reporting_entries(session) if local_date(t.date).strftime("%Y-%m") == month]
+    all_entries = reporting_entries(session)
+    entries = [t for t in all_entries if local_date(t.date).strftime("%Y-%m") == month]
     expenses = [t for t in entries if t.type == "expense"]
     spent = total(t.amount for t in expenses)
     income = total(t.amount for t in entries if t.type == "income")
+    # Build 12-month bar series and previous-month stats across full history so windowed /state stays exact.
+    month_buckets = {}
+    for idx in range(12):
+        ym_index = today.year * 12 + (today.month - 1) - (11 - idx)
+        y, m = divmod(ym_index, 12)
+        month_buckets[f"{y:04d}-{m + 1:02d}"] = {"income": Decimal(0), "expense": Decimal(0)}
+    prev_y, prev_m = divmod(today.year * 12 + (today.month - 1) - 1, 12)
+    prev_key = f"{prev_y:04d}-{prev_m + 1:02d}"
+    prev_cats = {}
+    for entry in all_entries:
+        m_key = local_date(entry.date).strftime("%Y-%m")
+        if m_key in month_buckets:
+            month_buckets[m_key][entry.type] += Decimal(str(entry.amount))
+        if m_key == prev_key and entry.type == "expense":
+            prev_cats[entry.category] = prev_cats.get(entry.category, Decimal(0)) + Decimal(str(entry.amount))
+    monthly_totals = [{"month": k, "income": float(v["income"]), "expense": float(v["expense"])} for k, v in month_buckets.items()]
+    prev_bucket = month_buckets.get(prev_key, {"income": Decimal(0), "expense": Decimal(0)})
+    previous_month = {
+        "month": prev_key,
+        "spent": float(prev_bucket["expense"]),
+        "income": float(prev_bucket["income"]),
+        "categories": {k: float(v) for k, v in prev_cats.items()},
+    }
     categories = {c.name: c for c in rows(session, Category)}
     cap = settings.monthly_budget or total(b.amount for b in rows(session, Budget))
     days = calendar.monthrange(today.year, today.month)[1]
@@ -134,7 +159,8 @@ def finance_state(session):
             "safe_savings": max(0, total([cash, -reserved, -max(0, cap-spent), -owed])) if cap > 0 else 0,
             "owed": owed, "receivable": lent, "net_position": total([cash, lent, -owed]), "groups": groups,
             "savings_rate": round((income - spent) / income * 100, 1) if income > 0 else None,
-            "budget_control": round(max(0, 100 - spent / cap * 100), 1) if cap > 0 else None}}
+            "budget_control": round(max(0, 100 - spent / cap * 100), 1) if cap > 0 else None,
+            "monthly_totals": monthly_totals, "previous_month": previous_month}}
 
 
 class CategoryInput(Input):
@@ -179,7 +205,7 @@ def edit_category(category_id: int, body: CategoryInput, session: Session = Depe
     if any(c.id != category_id and c.name.casefold() == body.name.casefold() for c in rows(session, Category)):
         raise HTTPException(409, "A category with this name already exists.")
     old = category.name
-    for model in (Transaction, Budget, Saving, Regular):
+    for model in (Transaction, Budget, Saving, Regular, RecurringBill):
         for row in rows(session, model):
             if row.category == old:
                 row.category = body.name
@@ -194,7 +220,7 @@ def edit_category(category_id: int, body: CategoryInput, session: Session = Depe
 @router.delete("/categories/{category_id}")
 def delete_category(category_id: int, session: Session = Depends(get_session)):
     category = require_row(session, Category, category_id)
-    if any(r.category == category.name for model in (Transaction, Budget, Saving, Regular) for r in rows(session, model)):
+    if any(r.category == category.name for model in (Transaction, Budget, Saving, Regular, RecurringBill) for r in rows(session, model)):
         raise HTTPException(409, "This category is in use. Archive it instead.")
     session.delete(category)
     session.commit()
@@ -264,22 +290,172 @@ class TransferInput(Input):
     from_wallet_id: int = Field(gt=0, strict=True)
     to_wallet_id: int = Field(gt=0, strict=True)
     description: str = Field(default="Wallet transfer", min_length=1, max_length=240)
+    fee: float = 0
+    fee_category: str | None = Field(default=None, max_length=60)
 
     @field_validator("amount", mode="before")
     @classmethod
     def amount_valid(cls, value):
         return money(value)
 
+    @field_validator("fee", mode="before")
+    @classmethod
+    def fee_valid(cls, value):
+        if value in (None, ""):
+            return 0.0
+        val = money(value, positive=False)
+        if val < 0:
+            raise ValueError("Fee cannot be negative.")
+        return val
+
+
+def _resolve_fee_category(session, requested: str | None) -> str:
+    if requested:
+        ensure_category(session, requested)
+        cat = find_category(session, requested)
+        if cat and cat.bucket in ("needs", "wants"):
+            return cat.name
+        raise HTTPException(422, "Choose an active expense category for the fee.")
+    active = [c for c in rows(session, Category) if not c.archived and c.bucket in ("needs", "wants")]
+    for preferred in ("Utilities", "Other"):
+        found = next((c.name for c in active if c.name == preferred), None)
+        if found:
+            return found
+    return active[0].name if active else "Other"
+
 
 @router.post("/transfers", status_code=201)
 def transfer(body: TransferInput, session: Session = Depends(get_session)):
     if body.from_wallet_id == body.to_wallet_id:
         raise HTTPException(422, "Choose two different wallets.")
-    require_funds(session, body.from_wallet_id, body.amount)
+    total_debit = total([body.amount, body.fee])
+    require_funds(session, body.from_wallet_id, total_debit)
     ensure_wallet(session, body.to_wallet_id)
-    session.add(Movement(**body.model_dump(), kind="transfer", date=now()))
+    ts = now()
+    desc = body.description.strip() or "Wallet transfer"
+    session.add(Movement(
+        user_id=getattr(session, "user_id", "local"),
+        amount=body.amount,
+        from_wallet_id=body.from_wallet_id,
+        to_wallet_id=body.to_wallet_id,
+        description=desc,
+        kind="transfer",
+        date=ts,
+    ))
+    if body.fee > 0:
+        fee_cat = _resolve_fee_category(session, body.fee_category)
+        session.add(Transaction(
+            user_id=getattr(session, "user_id", "local"),
+            description=f"{desc} (Fee)"[:240],
+            amount=body.fee,
+            category=fee_cat,
+            type="expense",
+            wallet_id=body.from_wallet_id,
+            date=ts,
+        ))
     session.commit()
     return {"saved": True}
+
+
+class SplitShareInput(Input):
+    party: str = Field(min_length=1, max_length=100)
+    amount: float
+    due_date: str | None = None
+    note: str = Field(default="", max_length=240)
+
+    @field_validator("party")
+    @classmethod
+    def clean_party(cls, value):
+        if not value.strip():
+            raise ValueError("Enter a person's name.")
+        return value.strip()
+
+    @field_validator("amount", mode="before")
+    @classmethod
+    def share_valid(cls, value):
+        return money(value)
+
+    @field_validator("due_date")
+    @classmethod
+    def valid_due(cls, value):
+        return None if value is None else GoalInput.valid_date(value)
+
+
+class SplitInput(Input):
+    description: str = Field(min_length=1, max_length=240)
+    category: str = Field(min_length=1, max_length=60)
+    wallet_id: int = Field(gt=0, strict=True)
+    date: datetime = Field(default_factory=now)
+    my_share: float = 0
+    shares: list[SplitShareInput] = Field(min_length=1, max_length=20)
+
+    @field_validator("description")
+    @classmethod
+    def clean_desc(cls, value):
+        if not value.strip():
+            raise ValueError("Description cannot be blank.")
+        return value.strip()
+
+    @field_validator("my_share", mode="before")
+    @classmethod
+    def my_share_valid(cls, value):
+        if value in (None, ""):
+            return 0.0
+        val = money(value, positive=False)
+        if val < 0:
+            raise ValueError("Your share cannot be negative.")
+        return val
+
+    @field_validator("date")
+    @classmethod
+    def check_date(cls, value):
+        return local_date(value)
+
+
+@router.post("/splits", status_code=201)
+def split_expense(body: SplitInput, session: Session = Depends(get_session)):
+    total_paid = total([body.my_share, *(s.amount for s in body.shares)])
+    require_funds(session, body.wallet_id, total_paid)
+    if body.my_share > 0:
+        ensure_category(session, body.category)
+        cat = find_category(session, body.category)
+        if not cat or cat.bucket not in ("needs", "wants"):
+            raise HTTPException(422, "Choose an expense category.")
+        session.add(Transaction(
+            user_id=getattr(session, "user_id", "local"),
+            description=body.description,
+            amount=body.my_share,
+            category=body.category,
+            type="expense",
+            wallet_id=body.wallet_id,
+            date=body.date,
+        ))
+    user_id = getattr(session, "user_id", "local")
+    for share in body.shares:
+        loan = Loan(
+            user_id=user_id,
+            party=share.party,
+            direction="lent",
+            amount=share.amount,
+            repaid=0,
+            due_date=share.due_date,
+            note=share.note or f"Split: {body.description}"[:240],
+            date=body.date,
+        )
+        session.add(loan)
+        session.flush()
+        session.add(Movement(
+            user_id=user_id,
+            description=f"Lent to {loan.party}"[:240],
+            amount=share.amount,
+            kind="loan",
+            loan_id=loan.id,
+            from_wallet_id=body.wallet_id,
+            to_wallet_id=None,
+            date=body.date,
+        ))
+    session.commit()
+    return {"saved": True, "my_share": body.my_share, "lent_total": total(s.amount for s in body.shares)}
 
 
 @router.delete("/movements/{movement_id}")
@@ -551,6 +727,128 @@ def delete_regular(regular_id: int, session: Session = Depends(get_session)):
     session.delete(require_row(session, Regular, regular_id))
     session.commit()
     return {"saved": True}
+
+
+def advance_due_date(iso_date: str, frequency: str) -> str:
+    d = date.fromisoformat(iso_date)
+    if frequency == "weekly":
+        return (d + timedelta(days=7)).isoformat()
+    if frequency == "yearly":
+        y = d.year + 1
+        max_day = calendar.monthrange(y, d.month)[1]
+        return date(y, d.month, min(d.day, max_day)).isoformat()
+    # monthly (clamps e.g. Jan 31 -> Feb 28/29)
+    m = d.month + 1
+    y = d.year + (1 if m > 12 else 0)
+    m = 1 if m > 12 else m
+    max_day = calendar.monthrange(y, m)[1]
+    return date(y, m, min(d.day, max_day)).isoformat()
+
+
+class BillInput(Input):
+    name: str = Field(min_length=1, max_length=100)
+    amount: float
+    type: Literal["expense", "income"] = "expense"
+    category: str = Field(min_length=1, max_length=60)
+    wallet_id: int = Field(gt=0, strict=True)
+    frequency: Literal["weekly", "monthly", "yearly"] = "monthly"
+    next_due_date: str
+    note: str = Field(default="", max_length=240)
+    active: bool = True
+
+    @field_validator("name")
+    @classmethod
+    def clean_name(cls, value):
+        if not value.strip():
+            raise ValueError("Bill name cannot be blank.")
+        return value.strip()
+
+    @field_validator("amount", mode="before")
+    @classmethod
+    def amount_valid(cls, value):
+        return money(value)
+
+    @field_validator("next_due_date")
+    @classmethod
+    def due_valid(cls, value):
+        try:
+            parsed = date.fromisoformat(str(value))
+            return parsed.isoformat()
+        except ValueError:
+            raise ValueError("Choose a valid due date.") from None
+
+
+class PayBillInput(Input):
+    amount: float | None = None
+    wallet_id: int | None = Field(default=None, gt=0, strict=True)
+    date: datetime | None = None
+
+    @field_validator("amount", mode="before")
+    @classmethod
+    def amount_valid(cls, value):
+        if value in (None, ""):
+            return None
+        return money(value)
+
+
+def _validate_bill(session, body: BillInput):
+    ensure_wallet(session, body.wallet_id)
+    ensure_category(session, body.category)
+    cat = find_category(session, body.category)
+    expected_buckets = ("income",) if body.type == "income" else ("needs", "wants")
+    if not cat or cat.bucket not in expected_buckets:
+        raise HTTPException(422, f"Choose an active {body.type} category.")
+
+
+@router.post("/bills", status_code=201)
+def add_bill(body: BillInput, session: Session = Depends(get_session)):
+    _validate_bill(session, body)
+    session.add(RecurringBill(user_id=getattr(session, "user_id", "local"), **body.model_dump()))
+    session.commit()
+    return {"saved": True}
+
+
+@router.put("/bills/{bill_id}")
+def edit_bill(bill_id: int, body: BillInput, session: Session = Depends(get_session)):
+    row = require_row(session, RecurringBill, bill_id)
+    _validate_bill(session, body)
+    for key, value in body.model_dump().items():
+        setattr(row, key, value)
+    session.add(row)
+    session.commit()
+    return {"saved": True}
+
+
+@router.delete("/bills/{bill_id}")
+def delete_bill(bill_id: int, session: Session = Depends(get_session)):
+    session.delete(require_row(session, RecurringBill, bill_id))
+    session.commit()
+    return {"saved": True}
+
+
+@router.post("/bills/{bill_id}/pay")
+def pay_bill(bill_id: int, body: PayBillInput | None = None, session: Session = Depends(get_session)):
+    bill = require_row(session, RecurringBill, bill_id)
+    wallet_id = body.wallet_id if body and body.wallet_id is not None else bill.wallet_id
+    amount = body.amount if body and body.amount is not None else bill.amount
+    paid_at = local_date(body.date) if body and body.date is not None else now()
+    ensure_wallet(session, wallet_id)
+    ensure_category(session, bill.category)
+    desc = f"{bill.name} ({bill.note})"[:240] if bill.note else bill.name
+    session.add(Transaction(
+        user_id=getattr(session, "user_id", "local"),
+        description=desc,
+        amount=amount,
+        category=bill.category,
+        type=bill.type,
+        wallet_id=wallet_id,
+        date=paid_at,
+    ))
+    bill.last_paid_date = paid_at.date().isoformat()
+    bill.next_due_date = advance_due_date(bill.next_due_date, bill.frequency)
+    session.add(bill)
+    session.commit()
+    return {"saved": True, "next_due_date": bill.next_due_date}
 
 
 class AIQuestion(Input):

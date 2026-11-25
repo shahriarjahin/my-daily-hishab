@@ -7,9 +7,15 @@ import {
   type ReactNode,
 } from "react";
 import { api, status, native, device, ApiError, resetRevision } from "./api";
-import type { WorkspaceState, CloudStatus, Route, Provider } from "./types";
+import type { WorkspaceState, CloudStatus, Route, Provider, Transaction } from "./types";
 import { translate, type TranslationValues } from "./i18n";
 import { SystemBars, SystemBarsStyle } from "@capacitor/core";
+import {
+  applyOptimisticTransactions,
+  enqueueOfflineItem,
+  loadOfflineQueue,
+  saveOfflineQueue,
+} from "./smartEntry";
 const routes = new Set<Route>([
   "home",
   "history",
@@ -43,7 +49,10 @@ interface Context {
   loading: boolean;
   error: string;
   busy: boolean;
+  pendingSync: number;
   refresh: () => Promise<void>;
+  syncPending: () => Promise<void>;
+  loadMoreTransactions: (loadAll?: boolean) => Promise<void>;
   mutate: (path: string, method: string, body?: unknown) => Promise<unknown>;
   navigate: (route: Route) => void;
   goBack: () => void;
@@ -60,6 +69,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [loading, setLoading] = useState(true),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
+    [pendingSync, setPendingSync] = useState(() => loadOfflineQueue().length),
     [toast, setToast] = useState("");
   const [preferredLanguage, setPreferredLanguage] = useState<"en" | "bn">(
     () => {
@@ -84,7 +94,69 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       index: 0,
     }),
     saving = useRef(false),
+    syncing = useRef(false),
     timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const syncPending = async () => {
+    if (native || syncing.current) return;
+    const queue = loadOfflineQueue();
+    if (!queue.length || (typeof navigator !== "undefined" && navigator.onLine === false)) return;
+    syncing.current = true;
+    try {
+      const remaining = [...queue];
+      while (remaining.length) {
+        const item = remaining[0];
+        try {
+          await api(item.path, item.method, item.body);
+          remaining.shift();
+          saveOfflineQueue(remaining);
+          setPendingSync(remaining.length);
+        } catch (e) {
+          if (e instanceof ApiError && e.status === 409) {
+            await api<WorkspaceState>("/state");
+            await api(item.path, item.method, item.body);
+            remaining.shift();
+            saveOfflineQueue(remaining);
+            setPendingSync(remaining.length);
+          } else if (e instanceof ApiError && e.status >= 400 && e.status < 500 && e.status !== 401) {
+            remaining.shift();
+            saveOfflineQueue(remaining);
+            setPendingSync(remaining.length);
+          } else {
+            break;
+          }
+        }
+      }
+      if (!remaining.length) {
+        const next = await api<WorkspaceState>("/state");
+        setState(next);
+        setToast("Synced offline entries");
+      }
+    } catch {} finally {
+      syncing.current = false;
+    }
+  };
+
+  const loadMoreTransactions = async (loadAll = false) => {
+    if (!state || native) return;
+    const offset = state.transactions.length;
+    const limit = loadAll ? 50000 : 300;
+    const page = await api<{ transactions: Transaction[]; has_more: boolean; total: number }>(
+      `/transactions?offset=${offset}&limit=${limit}`,
+    );
+    setState((prev) => {
+      if (!prev) return prev;
+      const seen = new Set(prev.transactions.map((t) => `${t.id}:${t.movement_id || ""}`));
+      const extra = page.transactions.filter((t) => !seen.has(`${t.id}:${t.movement_id || ""}`));
+      return {
+        ...prev,
+        transactions: [...prev.transactions, ...extra],
+        has_more_transactions: page.has_more,
+        total_transaction_count: page.total,
+      };
+    });
+  };
+
   const refresh = async () => {
     const id = ++generation.current;
     try {
@@ -101,6 +173,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return;
       }
       if (account.setup_required) return;
+      if (!native && loadOfflineQueue().length) await syncPending();
       const next = await api<WorkspaceState>("/state");
       if (id === generation.current) {
         setState(next);
@@ -124,18 +197,38 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     saving.current = true;
     setBusy(true);
     const id = ++generation.current;
+    const isTxBatch = path === "/transactions" && method === "POST" && Boolean((body as { transactions?: unknown[] })?.transactions);
+    const canQueueOffline = !native && (isTxBatch || (method === "POST" && ["/transfers", "/splits"].includes(path)) || /^\/bills\/\d+\/pay$/.test(path));
+    const snapshot = state;
+    if (isTxBatch && state) {
+      const batch = (body as { transactions: Omit<Transaction, "id">[] }).transactions;
+      setState((prev) => (prev ? applyOptimisticTransactions(prev, batch) : prev));
+    }
     try {
+      if (!native && typeof navigator !== "undefined" && navigator.onLine === false && canQueueOffline) {
+        const q = enqueueOfflineItem(path, method, body);
+        setPendingSync(q.length);
+        return { queued: true };
+      }
       const result = await api(path, method, body);
-      // Fast refresh: only re-fetch state, skip cloud/status round-trip.
-      try {
-        const next = await api<WorkspaceState>("/state");
-        if (id === generation.current) {
-          setState(next);
-          setError("");
-        }
-      } catch {}
+      // Sync authoritative state in the background on fast optimistic tx saves; await on others.
+      const bgRefresh = api<WorkspaceState>("/state")
+        .then((next) => {
+          if (id === generation.current) {
+            setState(next);
+            setError("");
+          }
+        })
+        .catch(() => {});
+      if (!isTxBatch) await bgRefresh;
       return result;
     } catch (e) {
+      if (canQueueOffline && !(e instanceof ApiError)) {
+        const q = enqueueOfflineItem(path, method, body);
+        setPendingSync(q.length);
+        return { queued: true };
+      }
+      if (isTxBatch && snapshot) setState(snapshot);
       if (e instanceof ApiError && (e.status === 409 || e.status === 401))
         await refresh();
       throw e;
@@ -185,13 +278,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         void refresh();
     };
     const interval = setInterval(poll, 30000);
+    const onOnline = () => void syncPending();
     window.addEventListener("focus", poll);
     window.addEventListener("device-sync", poll);
+    window.addEventListener("online", onOnline);
     return () => {
       clearInterval(interval);
       window.removeEventListener("hashchange", hash);
       window.removeEventListener("focus", poll);
       window.removeEventListener("device-sync", poll);
+      window.removeEventListener("online", onOnline);
     };
   }, []);
   useEffect(() => {
@@ -228,7 +324,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         loading,
         error,
         busy,
+        pendingSync,
         refresh,
+        syncPending,
+        loadMoreTransactions,
         mutate,
         goBack: () => {
           if (navigation.current.index > 0) history.back();

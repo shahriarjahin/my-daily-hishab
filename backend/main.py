@@ -13,7 +13,8 @@ from .api import router
 from .integrations import router as integration_router
 from .finance import router as finance_router
 from .statements import router as statement_router
-from . import cloud
+from .shortcuts import router as shortcuts_router
+from . import cloud, shortcuts
 
 _HERE = Path(__file__).parent
 
@@ -30,6 +31,7 @@ app.include_router(security_router)
 app.include_router(integration_router)
 app.include_router(finance_router)
 app.include_router(statement_router)
+app.include_router(shortcuts_router)
 app.mount("/static", StaticFiles(directory=str(_HERE / "static")), name="static")
 react_directory = _HERE / "static" / "react"
 # The committed production bundle keeps Vercel's Python build independent of Node.
@@ -41,13 +43,20 @@ async def account_context(request, call_next):
     if not request.url.path.startswith("/api/"):
         return await call_next(request)
     from starlette.concurrency import run_in_threadpool
-    origin = request.headers.get("origin")
-    if request.method not in ("GET", "HEAD", "OPTIONS") and origin and origin.rstrip("/") != str(request.base_url).rstrip("/"):
-        return JSONResponse({"detail": "Use this app's own page to submit requests."}, status_code=403)
-    try:
-        identity, refreshed = await run_in_threadpool(cloud.read_session, request)
-    except HTTPException as error:
-        return JSONResponse({"detail": error.detail}, status_code=error.status_code)
+    shortcut_raw = shortcuts.extract_shortcut_token(request) if request.url.path == "/api/shortcuts/log" else None
+    if shortcut_raw:
+        identity = await run_in_threadpool(shortcuts.authenticate_shortcut_token, shortcut_raw)
+        if not identity:
+            return JSONResponse({"detail": "Invalid or revoked shortcut token."}, status_code=401)
+        refreshed = None
+    else:
+        origin = request.headers.get("origin")
+        if request.method not in ("GET", "HEAD", "OPTIONS") and origin and origin.rstrip("/") != str(request.base_url).rstrip("/"):
+            return JSONResponse({"detail": "Use this app's own page to submit requests."}, status_code=403)
+        try:
+            identity, refreshed = await run_in_threadpool(cloud.read_session, request)
+        except HTTPException as error:
+            return JSONResponse({"detail": error.detail}, status_code=error.status_code)
     token = cloud.CURRENT_USER.set(identity)
     try:
         public = request.url.path.startswith("/api/auth/") or request.url.path in ("/api/cloud/status", "/api/cloud/setup.sql", "/api/health")
