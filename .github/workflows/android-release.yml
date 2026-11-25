@@ -2,9 +2,9 @@ name: Android release build
 on:
   workflow_dispatch:
   push:
-    tags: ['android-v*']
+    tags: ['v*', 'android-v*']
 permissions:
-  contents: read
+  contents: write
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -40,7 +40,7 @@ jobs:
           node --test mobile/test_ledger.cjs
           python -m unittest mobile.test_compatibility -v
       - name: Validate cloud security and financial writes
-        run: python -m unittest backend.test_api backend.test_app backend.test_finance backend.test_integrations backend.test_security backend.test_account_updates backend.test_audit_fixes backend.test_loans_statements
+        run: python -m unittest discover -s backend
       - name: Restore release signing key
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -58,9 +58,15 @@ jobs:
           PY
       - name: Build signed APK and Android App Bundle
         run: python mobile/build.py --ci
-      - name: Upload private build artifacts
+      - name: Upload workflow build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: hishab-android-release
           path: mobile/dist/*
           retention-days: 30
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: mobile/dist/*
+          generate_release_notes: true
