@@ -103,13 +103,24 @@ class RelationalSession(ScopedSession):
         self.revision = revision
 
     def commit(self):
-        # In relational mode, bump revision on mutating commits
+        # In relational mode, enforce atomic CAS and bump revision on mutating commits
         if self.new or self.dirty or self.deleted:
-            self.revision += 1
+            expected = self.revision
+            new_rev = expected + 1
             setting = self.get(AppSetting, 1)
-            if setting:
-                setting.revision = self.revision
+            if setting and setting not in self.new:
+                result = self.execute(
+                    text("UPDATE app_settings SET revision = :new_rev WHERE user_id = :uid AND revision = :expected"),
+                    {"new_rev": new_rev, "uid": self.user_id, "expected": expected},
+                )
+                if result.rowcount == 0:
+                    self.rollback()
+                    raise HTTPException(409, "Your workspace changed. Reload before saving this change.")
+                self.expire(setting, ["revision"])
+            elif setting:
+                setting.revision = new_rev
                 self.add(setting)
+            self.revision = new_rev
             from .cloud import CURRENT_USER
             identity = CURRENT_USER.get()
             if identity:
@@ -132,24 +143,25 @@ def init_db(bind=None, user_id="local"):
         if not session.exec(select(Category).where(Category.user_id == user_id)).first():
             for category in default_categories(user_id=user_id):
                 session.add(Category(**category))
-        existing = set(session.exec(select(LedgerMigration.source_key).where(LedgerMigration.user_id == user_id)).all())
-        from .api import canonical_category, DHAKA
-        for model, kind in ((Income, "income"), (Expense, "expense")):
-            for entry in session.exec(select(model)).all():
-                key = f"{kind}:{entry.id}"
-                if key in existing:
-                    continue
-                session.add(LedgerMigration(user_id=user_id, source_key=key))
-                if session.exec(select(Transaction).where(Transaction.user_id == user_id, Transaction.legacy_key == key)).first():
-                    continue
-                category = entry.source if kind == "income" else entry.category
-                description = entry.description if kind == "income" else entry.item
-                timestamp = entry.timestamp
-                if timestamp.tzinfo is None:
-                    timestamp = timestamp.replace(tzinfo=timezone.utc)
-                session.add(Transaction(user_id=user_id, description=description, amount=entry.amount,
-                    category=canonical_category(category), type=kind, wallet_id=cash.id,
-                    date=timestamp.astimezone(DHAKA), legacy_key=key))
+        if user_id == "local":
+            existing = set(session.exec(select(LedgerMigration.source_key).where(LedgerMigration.user_id == user_id)).all())
+            from .api import canonical_category, DHAKA
+            for model, kind in ((Income, "income"), (Expense, "expense")):
+                for entry in session.exec(select(model)).all():
+                    key = f"{kind}:{entry.id}"
+                    if key in existing:
+                        continue
+                    session.add(LedgerMigration(user_id=user_id, source_key=key))
+                    if session.exec(select(Transaction).where(Transaction.user_id == user_id, Transaction.legacy_key == key)).first():
+                        continue
+                    category = entry.source if kind == "income" else entry.category
+                    description = entry.description if kind == "income" else entry.item
+                    timestamp = entry.timestamp
+                    if timestamp.tzinfo is None:
+                        timestamp = timestamp.replace(tzinfo=timezone.utc)
+                    session.add(Transaction(user_id=user_id, description=description, amount=entry.amount,
+                        category=canonical_category(category), type=kind, wallet_id=cash.id,
+                        date=timestamp.astimezone(DHAKA), legacy_key=key))
         session.commit()
 
 def get_session(request: Request):

@@ -1,7 +1,7 @@
 """Shortcuts / automation API tokens and quick one-step logging webhook."""
 import hashlib
 import secrets
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -32,6 +32,16 @@ def extract_shortcut_token(request) -> str | None:
     return None
 
 
+def revoke_user_tokens(user_id: str) -> None:
+    if not database.is_relational() or not database.is_uuid(user_id):
+        return
+    eng = database.get_engine()
+    from sqlmodel import delete
+    with ScopedSession(eng, user_id=user_id) as session:
+        session.exec(delete(ShortcutToken).where(ShortcutToken.user_id == user_id))
+        session.commit()
+
+
 def authenticate_shortcut_token(raw_token: str) -> dict | None:
     if not raw_token or not raw_token.startswith("hishab_sc_") or len(raw_token) < 20:
         return None
@@ -43,6 +53,10 @@ def authenticate_shortcut_token(raw_token: str) -> dict | None:
         row = session.exec(select(ShortcutToken).where(ShortcutToken.token_hash == digest)).first()
         if not row:
             return None
+        if row.expires_at:
+            exp = row.expires_at if row.expires_at.tzinfo else row.expires_at.replace(tzinfo=timezone.utc)
+            if exp < now():
+                return None
         row.last_used_at = now()
         session.add(row)
         session.commit()
@@ -50,12 +64,15 @@ def authenticate_shortcut_token(raw_token: str) -> dict | None:
             "user": {"id": row.user_id, "email": "", "factors": []},
             "shortcut_token": True,
             "default_wallet_id": row.default_wallet_id,
+            "allow_transfers": getattr(row, "allow_transfers", True),
         }
 
 
 class ShortcutTokenCreate(Input):
     label: str = Field(default="Shortcut", min_length=1, max_length=60)
     default_wallet_id: int | None = Field(default=None, gt=0, strict=True)
+    expires_days: int = Field(default=365, ge=1, le=3650)
+    allow_transfers: bool = True
 
     @field_validator("label")
     @classmethod
@@ -162,7 +179,9 @@ def create_shortcut_token(body: ShortcutTokenCreate, session: Session = Depends(
         token_hash=hash_shortcut_token(raw),
         token_prefix=raw[:16] + "...",
         default_wallet_id=body.default_wallet_id,
+        allow_transfers=body.allow_transfers,
         created_at=now(),
+        expires_at=now() + timedelta(days=body.expires_days),
     )
     session.add(row)
     session.commit()
@@ -174,7 +193,9 @@ def create_shortcut_token(body: ShortcutTokenCreate, session: Session = Depends(
             "label": row.label,
             "token_prefix": row.token_prefix,
             "default_wallet_id": row.default_wallet_id,
+            "allow_transfers": row.allow_transfers,
             "created_at": row.created_at.isoformat() if row.created_at else None,
+            "expires_at": row.expires_at.isoformat() if row.expires_at else None,
             "last_used_at": None,
         },
     }
@@ -233,6 +254,8 @@ def shortcut_log(body: ShortcutLogInput, session: Session = Depends(get_session)
         raise HTTPException(422, "Could not detect an amount in that text. Example: 'Tea 20' or paste a bKash SMS.")
 
     if parsed["kind"] == "transfer":
+        if not (cloud.CURRENT_USER.get() or {}).get("allow_transfers", True):
+            raise HTTPException(403, "This shortcut token is not permitted to perform wallet transfers.")
         from_wallet = _match_wallet(wallets, parsed.get("from_wallet_hint"), body.wallet_id, body.wallet)
         to_wallet = _match_wallet(wallets, parsed.get("to_wallet_hint") or "cash", None)
         if from_wallet.id == to_wallet.id and len(wallets) > 1:

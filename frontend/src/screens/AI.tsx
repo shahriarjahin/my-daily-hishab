@@ -132,17 +132,7 @@ export function Importer() {
       });
       if (!output.wallets.length && !output.transactions.length)
         throw new Error("No financial entries found.");
-      if (
-        output.provider !== "On-device AI" &&
-        !s!.settings.review_before_saving &&
-        !output.wallets.length
-      ) {
-        await mutate("/transactions", "POST", {
-          transactions: output.transactions,
-        });
-        setText("");
-        notify("Saved");
-      } else setResult(output);
+      setResult(output);
     } catch (e) {
       setError((e as Error).message);
     } finally {

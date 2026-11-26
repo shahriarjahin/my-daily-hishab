@@ -1,6 +1,7 @@
 """Download official portable Android build tools into the ignored mobile/.tools folder."""
 import concurrent.futures
 import hashlib
+import os
 from pathlib import Path
 import urllib.request
 import zipfile
@@ -8,7 +9,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parent
 TOOLS = ROOT / '.tools'
 PACKAGES = {
-    'jdk21': ('https://aka.ms/download-jdk/microsoft-jdk-21-windows-x64.zip', None),
+    'jdk21': ('https://aka.ms/download-jdk/microsoft-jdk-21-windows-x64.zip', os.getenv('HISHAB_JDK21_SHA256')),
     'commandline': ('https://dl.google.com/android/repository/commandlinetools-win-15859902_latest.zip', '90ae805d20434428bffcb699c290860f19bb5f66a67e6b330067e3de801fb04a'),
     'gradle814': ('https://services.gradle.org/distributions/gradle-8.14.3-bin.zip', None),
 }
@@ -18,17 +19,23 @@ def install(item):
     target = TOOLS / name
     if target.is_dir():
         return name + ' already present'
+    if not checksum and not name.startswith('gradle'):
+        raise RuntimeError(name + ' requires a pinned SHA-256 checksum (set HISHAB_JDK21_SHA256)')
     TOOLS.mkdir(parents=True, exist_ok=True)
     archive = TOOLS / (name + '.zip')
     if not archive.exists():
         urllib.request.urlretrieve(url, archive)
-    if checksum and hashlib.sha256(archive.read_bytes()).hexdigest() != checksum:
+    if checksum and hashlib.sha256(archive.read_bytes()).hexdigest() != checksum.lower():
         raise RuntimeError(name + ' checksum mismatch')
     if name.startswith('gradle'):
         expected = urllib.request.urlopen(url + '.sha256').read().decode().strip().split()[0]
         if hashlib.sha256(archive.read_bytes()).hexdigest() != expected:
             raise RuntimeError('Gradle checksum mismatch')
+    target_real = target.resolve()
     with zipfile.ZipFile(archive) as z:
+        for member in z.namelist():
+            if not (target_real / member).resolve().is_relative_to(target_real):
+                raise RuntimeError(name + ' archive path traversal detected')
         z.extractall(target)
     return name + ' installed'
 

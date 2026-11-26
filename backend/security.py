@@ -3,7 +3,7 @@ from typing import Literal
 from uuid import UUID
 from fastapi import APIRouter, Response
 from pydantic import Field
-from . import cloud
+from . import cloud, shortcuts
 from .api import Input
 
 router=APIRouter(prefix="/api/auth")
@@ -32,6 +32,8 @@ def verify(body:VerifyFactor,response:Response):
     path="/auth/v1/factors/"+str(body.factor_id)
     challenge=cloud.call("POST",path+"/challenge",identity["access_token"],{})
     tokens=cloud.call("POST",path+"/verify",identity["access_token"],{"challenge_id":challenge["id"],"code":body.code})
+    if identity.get("aal", "aal1") == "aal1" and not any(f.get("status") == "verified" for f in identity.get("user", {}).get("factors", [])):
+        shortcuts.revoke_user_tokens(identity["user"]["id"])
     cloud.set_cookie(response,cloud.token_data(tokens))
     return {"verified":True}
 

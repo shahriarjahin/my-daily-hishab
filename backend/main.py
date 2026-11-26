@@ -55,7 +55,8 @@ async def account_context(request, call_next):
         refreshed = None
     else:
         origin = request.headers.get("origin")
-        if request.method not in ("GET", "HEAD", "OPTIONS") and origin and origin.rstrip("/") != str(request.base_url).rstrip("/"):
+        expected_origin = os.getenv("HISHAB_PUBLIC_URL", "").strip().rstrip("/") or str(request.base_url).rstrip("/")
+        if request.method not in ("GET", "HEAD", "OPTIONS") and origin and origin.rstrip("/") != expected_origin:
             return JSONResponse({"detail": "Use this app's own page to submit requests."}, status_code=403)
         try:
             identity, refreshed = await run_in_threadpool(cloud.read_session, request)
@@ -111,7 +112,15 @@ def service_worker():
 
 @app.get("/quick", response_class=HTMLResponse)
 def quick_entry_popup():
-    return FileResponse(_HERE / "static" / "quick.html", media_type="text/html", headers={"Cache-Control": "no-cache"})
+    return FileResponse(
+        _HERE / "static" / "quick.html",
+        media_type="text/html",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Frame-Options": "DENY",
+            "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+        },
+    )
 
 
 @app.get("/", response_class=HTMLResponse)

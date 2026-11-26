@@ -15,7 +15,10 @@ router = APIRouter()
 FLOW_COOKIE = "hishab_auth_flow"
 
 def app_origin(request):
-    value = os.getenv("HISHAB_PUBLIC_URL", "").strip().rstrip("/") or str(request.base_url).rstrip("/")
+    configured = os.getenv("HISHAB_PUBLIC_URL", "").strip().rstrip("/")
+    if not configured and (os.getenv("VERCEL") == "1" or os.getenv("COOKIE_SECURE") == "true"):
+        raise HTTPException(503, "Configure HISHAB_PUBLIC_URL for production authentication.")
+    value = configured or str(request.base_url).rstrip("/")
     parsed = urlsplit(value)
     if parsed.scheme not in ("https", "http") or not parsed.netloc or parsed.username or parsed.password or parsed.query or parsed.fragment:
         raise HTTPException(503, "Configure the public app URL.")
@@ -65,12 +68,30 @@ def forgot_password(body: EmailInput, request: Request, response: Response):
     return {"message": "If this email has an account, a password reset link has been sent."}
 
 @router.put("/api/auth/password")
-def change_password(body: PasswordInput):
+def change_password(body: PasswordInput, response: Response):
     identity = cloud.require_assurance()
     values = {"password": body.password.get_secret_value()}
-    if body.current_password:
+    if not identity.get("recovery"):
+        current = body.current_password.get_secret_value() if body.current_password else ""
+        if not current:
+            raise HTTPException(422, "Enter your current password.")
+        email = identity.get("user", {}).get("email", "")
+        if email:
+            cloud.call("POST", "/auth/v1/token?grant_type=password", body={"email": email, "password": current})
+        values["current_password"] = current
+    elif body.current_password:
         values["current_password"] = body.current_password.get_secret_value()
     cloud.call("PUT", "/auth/v1/user", identity["access_token"], values)
+    try:
+        cloud.call("POST", "/auth/v1/logout?scope=others", identity["access_token"])
+    except HTTPException:
+        pass
+    from . import shortcuts
+    uid = identity.get("user", {}).get("id")
+    if uid:
+        shortcuts.revoke_user_tokens(uid)
+    if identity.get("refresh_token"):
+        cloud.set_cookie(response, cloud.token_data(identity, recovery=False))
     return {"saved": True}
 
 @router.get("/auth/callback")
@@ -85,8 +106,9 @@ def callback(request: Request, code: str = "", error: str = ""):
     try:
         flow = json.loads(cloud.cipher().decrypt(request.cookies.get(FLOW_COOKIE, "").encode(), ttl=3600))
         tokens = cloud.call("POST", "/auth/v1/token?grant_type=pkce", body={"auth_code": code, "code_verifier": flow["verifier"]})
-        response = RedirectResponse("/?recovery=1#password" if flow.get("purpose") == "recovery" else "/#home", status_code=303)
-        cloud.set_cookie(response, cloud.token_data(tokens))
+        is_recovery = flow.get("purpose") == "recovery"
+        response = RedirectResponse("/?recovery=1#password" if is_recovery else "/#home", status_code=303)
+        cloud.set_cookie(response, cloud.token_data(tokens, recovery=is_recovery))
     except Exception:
         response = RedirectResponse("/?auth_error=1", status_code=303)
     response.delete_cookie(FLOW_COOKIE, path="/")
@@ -109,5 +131,5 @@ def implicit_callback(body: TokenInput, response: Response):
     original = cloud.call("GET", "/auth/v1/user", access)
     if verified["id"] != original["id"]:
         raise HTTPException(401, "Invalid authentication callback.")
-    cloud.set_cookie(response, cloud.token_data(tokens))
+    cloud.set_cookie(response, cloud.token_data(tokens, recovery=body.recovery))
     return {"signed_in": True}

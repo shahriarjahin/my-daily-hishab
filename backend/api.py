@@ -358,12 +358,12 @@ def edit_settings(body: SettingsInput, session: Session = Depends(get_session)):
 
 @router.get("/export.csv")
 def export_csv(session: Session = Depends(get_session)):
-    from .finance import reporting_entries
+    from .finance import reporting_entries, rows
     session._row_cache = {}  # Cache for read-only request
     output = io.StringIO(newline="")
     writer = csv.writer(output)
     writer.writerow(["Date", "Description", "Type", "Category", "Amount (BDT)", "Wallet"])
-    wallets = {w.id: w.name for w in session.exec(select(Wallet)).all()}
+    wallets = {w.id: w.name for w in rows(session, Wallet)}
     def safe(value):
         value = str(value)
         return "'" + value if value.lstrip().startswith(("=", "+", "-", "@", "\t", "\r")) else value

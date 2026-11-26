@@ -35,6 +35,12 @@ final class Runtime {
         if(value==null)preferences.edit().remove("tokens").commit();
         else preferences.edit().putString("tokens",store.vault.seal(value.toString())).commit();
     }
+    String backendUrl() {
+        String raw=preferences.getString("backend_url",null);
+        if(raw==null)return config.optString("backend_url","");
+        if(raw.isEmpty()||raw.startsWith("https://"))return raw;
+        try{return store.vault.open(raw);}catch(Exception ignored){return config.optString("backend_url","");}
+    }
     boolean offline(){return preferences.getBoolean("offline_mode",false);}
     String user() throws Exception {if(offline())return "__offline__";JSONObject s=session();if(s==null)throw new IllegalStateException("Sign in first.");if(needsMfa(s))throw new IllegalStateException("Complete two-step verification first.");return s.getJSONObject("user").getString("id");}
     boolean needsMfa(JSONObject saved) throws Exception {
@@ -81,14 +87,14 @@ final class Runtime {
         JSONObject row=s==null?new JSONObject():store.load(user());
         return new JSONObject().put("configured",true).put("cloud_mode",true).put("signed_in",s!=null).put("email",s==null?JSONObject.NULL:s.getJSONObject("user").optString("email"))
             .put("name",preferences.getString("welcome_name",s==null?"":s.getJSONObject("user").optJSONObject("user_metadata")==null?"":s.getJSONObject("user").getJSONObject("user_metadata").optString("name"))).put("setup_required",false).put("revision",row.optLong("seq")).put("has_backup",row.optBoolean("exists")).put("sync_state",row.optBoolean("conflict")?"conflict":syncState)
-            .put("dirty",row.optBoolean("dirty")).put("synced_at",row.opt("synced_at")).put("message",syncMessage).put("backend_url",preferences.getString("backend_url",config.optString("backend_url","")));
+            .put("dirty",row.optBoolean("dirty")).put("synced_at",row.opt("synced_at")).put("message",syncMessage).put("backend_url",backendUrl());
     }
     JSONObject login(JSONObject body,boolean signup) throws Exception {
         preferences.edit().putBoolean("offline_mode",false).commit();
         String display=body.optString("name",preferences.getString("welcome_name",""));
         if(!display.isEmpty())preferences.edit().putString("welcome_name",display).commit();
         JSONObject credentials=new JSONObject().put("email",body.getString("email")).put("password",body.getString("password"));if(signup)credentials.put("data",new JSONObject().put("name",display).put("hishab_name",display));
-        JSONObject result=http(config.getString("supabase_url"),signup?"/auth/v1/signup?redirect_to="+java.net.URLEncoder.encode(preferences.getString("backend_url",config.optString("backend_url","https://mydailyhishab.vercel.app"))+"/auth/callback","UTF-8"):"/auth/v1/token?grant_type=password","POST",credentials,null).getJSONObject("data");
+        JSONObject result=http(config.getString("supabase_url"),signup?"/auth/v1/signup?redirect_to="+java.net.URLEncoder.encode((backendUrl().isEmpty()?"https://mydailyhishab.vercel.app":backendUrl())+"/auth/callback","UTF-8"):"/auth/v1/token?grant_type=password","POST",credentials,null).getJSONObject("data");
         if(!result.has("access_token"))return new JSONObject().put("signed_in",false).put("message","Check your email, then sign in.");
         session(result);syncState="pending";syncMessage="";
         try{if(!needsMfa(result)){sync();applyWelcomeName();}}catch(Exception e){syncMessage=e.getMessage();}
@@ -100,7 +106,7 @@ final class Runtime {
         String account=user();JSONObject local=store.load(account);syncState="syncing";notifyChange();
         try{
             String bearer=token();
-            String base=preferences.getString("backend_url",config.optString("backend_url",""));
+            String base=backendUrl();
             if(base.isEmpty())throw new IllegalStateException("Set the Hishab server URL to sync encrypted cloud records.");
             JSONObject cloud=http(base,"/api/cloud/workspace","GET",null,bearer).getJSONObject("data");
             long revision=cloud.optLong("revision",0);
@@ -131,12 +137,12 @@ final class Runtime {
         return cached==null?new JSONObject().put("providers",new JSONArray()).put("automatic_failover",true):new JSONObject(store.vault.open(cached));
     }
     void cacheProviders(JSONObject value) throws Exception {preferences.edit().putString("providers:"+user(),store.vault.seal(value.toString())).commit();}
-    void refreshProviders(){try{if(offline()||session()==null)return;String base=preferences.getString("backend_url",config.optString("backend_url",""));if(base.isEmpty())return;JSONObject value=http(base,"/api/ai/providers","GET",null,token()).getJSONObject("data");cacheProviders(value);notifyChange();}catch(Exception ignored){}}
+    void refreshProviders(){try{if(offline()||session()==null)return;String base=backendUrl();if(base.isEmpty())return;JSONObject value=http(base,"/api/ai/providers","GET",null,token()).getJSONObject("data");cacheProviders(value);notifyChange();}catch(Exception ignored){}}
     void scheduleSync(){if(!syncQueued.compareAndSet(false,true))return;network.execute(()->{try{sync();refreshProviders();}catch(Exception ignored){}finally{syncQueued.set(false);}});}
     void notifyChange(){Runnable r=listener;if(r!=null)r.run();}
     Object remote(JSONObject body) throws Exception {
         if(offline())throw new IllegalStateException("AI needs a cloud account. Your offline records stay on this device.");
-        String base=preferences.getString("backend_url",config.optString("backend_url",""));
+        String base=backendUrl();
         if(base.isEmpty())throw new IllegalStateException("Add your deployed Hishab URL in Settings → Sync & device to use AI.");
         sync();JSONObject local=store.load(user());
         if(local.optBoolean("dirty")||local.optBoolean("conflict"))throw new IllegalStateException("Resolve sync before using cloud AI.");
@@ -182,14 +188,14 @@ final class Runtime {
             case "save":{String account=user();JSONObject workspace=body.getJSONObject("workspace");if(workspace.toString().length()>8000000)throw new IllegalArgumentException("Workspace is too large.");JSONObject saved=store.save(account,workspace,body.getLong("seq"));syncState=offline()?"offline":"pending";if(!offline())scheduleSync();return saved;}
             case "login":return login(body,false);
             case "signup":return login(body,true);
-            case "forgot-password":{String base=preferences.getString("backend_url",config.optString("backend_url","https://mydailyhishab.vercel.app"));context.startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse(base+"/?forgot=1")).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK));return new JSONObject().put("opened",true);}
-            case "password":http(config.getString("supabase_url"),"/auth/v1/user","PUT",body,token());return new JSONObject().put("saved",true);
-            case "logout":if(offline()){preferences.edit().putBoolean("offline_mode",false).commit();WidgetStore.clear(context);return new JSONObject().put("signed_in",false);}session(null);syncState="offline";WidgetStore.clear(context);return new JSONObject().put("signed_in",false);
+            case "forgot-password":{String base=backendUrl().isEmpty()?"https://mydailyhishab.vercel.app":backendUrl();context.startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse(base+"/?forgot=1")).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK));return new JSONObject().put("opened",true);}
+            case "password":{JSONObject s=session();if(needsMfa(s))throw new IllegalStateException("Complete two-step verification first.");String cur=body.optString("current_password","");if(cur.isEmpty())throw new IllegalArgumentException("Enter your current password.");String email=s.getJSONObject("user").optString("email","");if(!email.isEmpty())http(config.getString("supabase_url"),"/auth/v1/token?grant_type=password","POST",new JSONObject().put("email",email).put("password",cur),null);String bearer=token();http(config.getString("supabase_url"),"/auth/v1/user","PUT",body,bearer);try{http(config.getString("supabase_url"),"/auth/v1/logout?scope=others","POST",new JSONObject(),bearer);}catch(Exception ignored){}return new JSONObject().put("saved",true);}
+            case "logout":if(offline()){preferences.edit().putBoolean("offline_mode",false).commit();WidgetStore.clear(context);return new JSONObject().put("signed_in",false);}try{http(config.getString("supabase_url"),"/auth/v1/logout?scope=local","POST",new JSONObject(),token());}catch(Exception ignored){}session(null);syncState="offline";WidgetStore.clear(context);return new JSONObject().put("signed_in",false);
             case "sync":sync();return status();
             case "resolve":store.resolve(user(),body.getString("choice"));sync();return status();
             case "recoveries":return store.recoveries(user());
             case "remote":return remote(body);
-            case "config":{String base=body.getString("backend_url").trim().replaceAll("/+$","");if(!base.isEmpty()){URL u=new URL(base);if(!u.getProtocol().equals("https")||u.getHost().isEmpty()||u.getUserInfo()!=null||!u.getPath().isEmpty()||u.getQuery()!=null||u.getRef()!=null)throw new IllegalArgumentException("Use an HTTPS website origin, such as https://your-app.vercel.app");}preferences.edit().putString("backend_url",base).commit();return status();}
+            case "config":{String base=body.getString("backend_url").trim().replaceAll("/+$","");if(!base.isEmpty()){URL u=new URL(base);if(!u.getProtocol().equals("https")||u.getHost().isEmpty()||u.getUserInfo()!=null||!u.getPath().isEmpty()||u.getQuery()!=null||u.getRef()!=null)throw new IllegalArgumentException("Use an HTTPS website origin, such as https://your-app.vercel.app");}preferences.edit().putString("backend_url",base.isEmpty()?"":store.vault.seal(base)).commit();return status();}
             default:throw new IllegalArgumentException("Unknown device action.");
         }
     }

@@ -243,6 +243,18 @@ function DeviceSettings() {
           <form
             onSubmit={(e) => {
               e.preventDefault();
+              const next = server.trim();
+              if (
+                next &&
+                next !== (status?.backend_url || "") &&
+                !window.confirm(
+                  t(
+                    "Only use a server you trust: your Supabase account token will be sent to this server.",
+                  ),
+                )
+              ) {
+                return;
+              }
               void run("config", { backend_url: server });
             }}
           >
@@ -256,7 +268,9 @@ function DeviceSettings() {
               />
             </label>
             <p className="form-hint">
-              {t("Use your own Hishab server for cloud sync and optional AI.")}
+              {t(
+                "Only connect to a Hishab server you own or trust—your Supabase login token is sent to it.",
+              )}
             </p>
             <Button type="submit">{t("Save")}</Button>
           </form>

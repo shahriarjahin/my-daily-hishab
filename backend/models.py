@@ -202,7 +202,9 @@ class ShortcutToken(SQLModel, table=True):
     token_hash: str
     token_prefix: str
     default_wallet_id: Optional[int] = None
+    allow_transfers: bool = True
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    expires_at: Optional[datetime] = None
     last_used_at: Optional[datetime] = None
 
 

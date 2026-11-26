@@ -13,6 +13,7 @@ import { SystemBars, SystemBarsStyle } from "@capacitor/core";
 import {
   applyOptimisticTransactions,
   buildWidgetSummary,
+  clearSessionLocalStorage,
   enqueueOfflineItem,
   loadOfflineQueue,
   saveOfflineQueue,
@@ -165,6 +166,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (id !== generation.current) return;
       setCloud(account);
       if (!account.signed_in) {
+        clearSessionLocalStorage();
+        setPendingSync(0);
         setState(null);
         resetRevision();
         return;
@@ -212,6 +215,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return { queued: true };
       }
       const result = await api(path, method, body);
+      if (path === "/auth/logout") {
+        clearSessionLocalStorage();
+        setPendingSync(0);
+      }
       // Sync authoritative state in the background on fast optimistic tx saves; await on others.
       const bgRefresh = api<WorkspaceState>("/state")
         .then((next) => {

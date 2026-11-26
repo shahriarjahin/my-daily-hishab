@@ -102,6 +102,33 @@ export function restoreBackup(current: any, raw: any) {
   for (const r of w.goals) {
     check(typeof r.name === "string" && r.name.trim() && r.name.length <= 100);
     L.money(r.target);
+    check(
+      r.due_date == null ||
+        r.due_date === "" ||
+        (typeof r.due_date === "string" &&
+          /^\d{4}-\d{2}-\d{2}$/.test(r.due_date) &&
+          Number.isFinite(Date.parse(r.due_date))),
+    );
+    check(
+      r.color == null ||
+        r.color === "" ||
+        (typeof r.color === "string" && /^#[a-f0-9]{6}$/i.test(r.color)),
+    );
+  }
+  for (const r of w.recurring_bills || []) {
+    check(
+      typeof r.name === "string" &&
+        r.name.trim() &&
+        r.name.length <= 100 &&
+        ["income", "expense"].includes(r.type) &&
+        ["weekly", "monthly", "yearly"].includes(r.frequency) &&
+        walletIds.has(r.wallet_id) &&
+        categories.has(r.category) &&
+        typeof r.next_due_date === "string" &&
+        /^\d{4}-\d{2}-\d{2}$/.test(r.next_due_date) &&
+        Number.isFinite(Date.parse(r.next_due_date)),
+    );
+    L.money(r.amount);
   }
   for (const r of w.loans) {
     check(

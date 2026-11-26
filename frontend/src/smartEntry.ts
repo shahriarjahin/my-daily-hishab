@@ -111,6 +111,14 @@ export function saveOfflineQueue(items: OfflineQueueItem[]) {
   } catch {}
 }
 
+export function clearSessionLocalStorage() {
+  try {
+    localStorage.removeItem(LAST_WALLET_KEY);
+    localStorage.removeItem(PINNED_KEY);
+    localStorage.removeItem(OFFLINE_QUEUE_KEY);
+  } catch {}
+}
+
 export function enqueueOfflineItem(path: string, method: string, body: unknown): OfflineQueueItem[] {
   const current = loadOfflineQueue();
   const next = [

@@ -155,7 +155,7 @@ def import_workspace(session, raw):
     user_id = getattr(session, "user_id", "local")
     data = validate_workspace(raw)
     # Validation is complete before any row is replaced. This operation is one transaction.
-    for model in (Transaction, Budget, Saving, Movement, Regular, RecurringBill, Goal, Loan, AdvisorMessage, Wallet, Category, AppSetting):
+    for model in (Transaction, Budget, Saving, Movement, Regular, RecurringBill, Goal, Loan, AdvisorMessage, Wallet, Category):
         if hasattr(model, "user_id"):
             session.exec(delete(model).where(model.user_id == user_id))
         else:
@@ -168,8 +168,14 @@ def import_workspace(session, raw):
         session.add(Transaction(user_id=user_id, id=row["id"], **fields))
     for row in data["budgets"]:
         session.add(Budget(user_id=user_id, **row))
-    s_fields = {k: v for k, v in data["settings"].items() if k != "user_id"}
-    session.add(AppSetting(user_id=user_id, id=1, **s_fields))
+    s_fields = {k: v for k, v in data["settings"].items() if k not in ("user_id", "revision")}
+    existing_setting = session.get(AppSetting, 1)
+    if existing_setting:
+        for k, v in s_fields.items():
+            setattr(existing_setting, k, v)
+        session.add(existing_setting)
+    else:
+        session.add(AppSetting(user_id=user_id, id=1, **s_fields))
     for key, model in COLLECTIONS.items():
         for row in data.get(key, []):
             m_fields = {k: v for k, v in row.items() if k != "user_id"}

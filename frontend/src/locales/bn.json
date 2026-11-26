@@ -915,5 +915,7 @@
   "Quick popup URL": "কুইক পপআপ ইউআরএল",
   "Monthly & recurring bills": "মাসিক ও পুনরাবৃত্ত বিল",
   "Due": "বাকি/নির্ধারিত",
-  "Daily trackers": "দৈনিক ট্র্যাকার"
+  "Daily trackers": "দৈনিক ট্র্যাকার",
+  "Only use a server you trust: your Supabase account token will be sent to this server.": "শুধুমাত্র আপনার বিশ্বস্ত সার্ভার ব্যবহার করুন: আপনার সুপাবেস অ্যাকাউন্ট টোকেন এই সার্ভারে পাঠানো হবে।",
+  "Only connect to a Hishab server you own or trust—your Supabase login token is sent to it.": "শুধু আপনার নিজের বা বিশ্বস্ত হিসাব সার্ভারে যুক্ত হোন—আপনার সুপাবেস লগইন টোকেন সেখানে পাঠানো হয়।"
 }

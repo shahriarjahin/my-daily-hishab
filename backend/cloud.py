@@ -115,9 +115,12 @@ def read_session(request):
         return None, None
 
 
-def token_data(data):
-    return {"access_token": data["access_token"], "refresh_token": data["refresh_token"],
+def token_data(data, recovery=False):
+    result = {"access_token": data["access_token"], "refresh_token": data["refresh_token"],
             "expires_at": data.get("expires_at", time.time() + data.get("expires_in", 3600))}
+    if recovery:
+        result["recovery"] = True
+    return result
 
 
 def user():
@@ -189,6 +192,7 @@ def verified_session(saved, identity):
     except (ValueError,IndexError,KeyError):
         aal="aal1"
     saved["aal"]=aal
+    saved["recovery"]=bool(saved.get("recovery"))
     saved["mfa_required"]=any(f.get("status")=="verified" for f in identity.get("factors",[])) and aal!="aal2"
     return saved
 

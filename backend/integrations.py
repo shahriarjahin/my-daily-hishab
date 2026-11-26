@@ -93,10 +93,10 @@ def retry_providers():
 
 
 def balance_preview(session, item):
-    wallet = next((w for w in session.exec(select(Wallet)).all() if w.name.casefold() == item.name.casefold()), None)
+    from .finance import rows, wallet_balance
+    wallet = next((w for w in rows(session, Wallet) if w.name.casefold() == item.name.casefold()), None)
     current = None
     if wallet:
-        from .finance import wallet_balance
         current = wallet_balance(session, wallet.id)
     return {"name": wallet.name if wallet else item.name, "balance": item.balance,
             "expected_balance": current, "existing": wallet is not None}
@@ -104,15 +104,16 @@ def balance_preview(session, item):
 
 @router.post("/extract")
 def extract_entries(body: ExtractInput, session: Session = Depends(get_session)):
+    from .finance import rows
     ai.require_enabled(session)
     if not body.text.strip():
         raise HTTPException(422, "Describe a transaction or wallet balance first.")
-    wallets = session.exec(select(Wallet).order_by(Wallet.id)).all()
+    wallets = sorted(rows(session, Wallet), key=lambda w: w.id)
     chosen = next((w for w in wallets if w.id == body.wallet_id), None)
     if body.wallet_id and chosen is None:
         raise HTTPException(422, "Choose an existing wallet.")
     default_id = chosen.id if chosen else wallets[0].id if wallets else None
-    categories = [c.name for c in session.exec(select(Category)).all() if not c.archived and c.bucket != "savings"]
+    categories = [c.name for c in rows(session, Category) if not c.archived and c.bucket != "savings"]
     prompt = (
         "You are Hishab, a Bangladeshi finance extractor. Read English, Bangla and Banglish. "
         "Return ONLY a JSON object with arrays wallets and transactions. "
@@ -272,8 +273,8 @@ def cloud_status():
                     setting = session.get(AppSetting, 1)
                     rev = setting.revision if setting else 1
                     status.update(revision=rev, has_backup=True, updated_at=None)
-            except Exception as error:
-                status.update(setup_required=True, message=str(error))
+            except Exception:
+                status.update(setup_required=True, message="Cloud database unavailable.")
         else:
             try:
                 row = cloud.read_workspace()
@@ -326,6 +327,9 @@ def pull_workspace():
     user_id = identity["user"]["id"]
     if database.is_relational() and database.is_uuid(user_id):
         eng = database.get_engine()
+        with database.ScopedSession(eng, user_id=user_id) as check_s:
+            if not check_s.get(AppSetting, 1):
+                database.init_db(eng, user_id=user_id)
         with database.ScopedSession(eng, user_id=user_id) as session:
             setting = session.get(AppSetting, 1)
             rev = setting.revision if setting else 1
@@ -341,11 +345,15 @@ def push_workspace(body: ImportInput):
     user_id = identity["user"]["id"]
     if database.is_relational() and database.is_uuid(user_id):
         eng = database.get_engine()
-        with database.RelationalSession(eng, user_id=user_id) as session:
-            setting = session.get(AppSetting, 1)
+        with database.ScopedSession(eng, user_id=user_id) as check_s:
+            setting = check_s.get(AppSetting, 1)
+            if not setting:
+                database.init_db(eng, user_id=user_id)
+                setting = check_s.get(AppSetting, 1)
             current_rev = setting.revision if setting else 1
-            if current_rev != body.expected_revision:
-                raise HTTPException(409, "Your cloud workspace changed. Reload before importing.")
+        if current_rev != body.expected_revision:
+            raise HTTPException(409, "Your cloud workspace changed. Reload before importing.")
+        with database.RelationalSession(eng, user_id=user_id, revision=current_rev) as session:
             try:
                 data = validate_workspace(body.data)
             except ValueError:
